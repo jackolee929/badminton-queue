@@ -95,10 +95,9 @@
     .header-logo { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 800; letter-spacing: -.01em; }
     .header-logo span { font-size: 1.35rem; }
     .room-pill {
-      font-size: .68rem; font-weight: 700; color: var(--primary-h);
+      font-size: .72rem; font-weight: 700; color: var(--primary-h);
       background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.25);
-      border-radius: 20px; padding: 2px 9px; max-width: 120px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      border-radius: 20px; padding: 3px 11px;
     }
     .header-actions { display: flex; align-items: center; gap: 7px; }
 
@@ -461,7 +460,8 @@
     <button class="btn btn-gradient btn-full btn-lg" onclick="doJoin()">加入隊列 →</button>
     <div id="join-ok" class="join-success">
       ✅ 已成功加入等待隊列！<br>
-      <span style="font-weight:400;font-size:.82rem">請稍候，管理員安排上場後會輪到你</span>
+      <span style="font-weight:400;font-size:.82rem">請稍候，管理員安排上場後會輪到你</span><br>
+      <span id="join-ok-room" style="font-size:.72rem;opacity:.7"></span>
     </div>
     <div class="join-note">
       加入後請把手機交給下一位<br>
@@ -1162,29 +1162,66 @@ function doJoin() {
   el.disabled = true;
   document.querySelector('#join-view .btn').disabled = true;
 
-  // Firebase transaction：安全地加入玩家（防止同名或同時加入）
+  // Firebase transaction：安全地加入玩家
   _fbRef.transaction(state => {
     if (!state) return state; // room not found → abort
     const players = Array.isArray(state.players) ? state.players : Object.values(state.players || {});
-    if (players.find(p => p.name === name)) return; // duplicate → abort
+    if (players.find(p => p.name === name)) return; // 已存在 → abort，callback 內再判斷原因
     players.push({ id: uid(), name, joined: Date.now(), games: 0, status: 'waiting' });
     state.players = players;
     return state;
-  }, (error, committed) => {
-    if (!committed) {
+  }, (error, committed, snapshot) => {
+    if (error) {
       el.disabled = false;
       document.querySelector('#join-view .btn').disabled = false;
-      if (!error) {
+      notify('⚠ 加入失敗，請重試', 'err');
+      return;
+    }
+    if (!committed) {
+      // transaction 被 abort → 判斷原因
+      const data    = snapshot ? snapshot.val() : null;
+      const players = data
+        ? (Array.isArray(data.players) ? data.players : Object.values(data.players || {}))
+        : [];
+      const existing = players.find(p => p.name === name);
+
+      if (!data) {
+        // 房間不存在
+        el.disabled = false;
+        document.querySelector('#join-view .btn').disabled = false;
+        notify('⚠ 找不到此房間，請確認房間代碼', 'err');
+      } else if (existing && existing.status === 'playing') {
+        // 已在場上打球
+        showJoinOk(`🏸 你目前已在場上！`);
+      } else if (existing && existing.status === 'waiting') {
+        // 關掉再開、重複掃碼 → 視為重新確認，顯示成功
+        showJoinOk(`✅ 你已在等待隊列中！`);
+      } else {
+        // 真的有別人用同名
+        el.disabled = false;
+        document.querySelector('#join-view .btn').disabled = false;
         el.style.borderColor = 'var(--danger)';
         setTimeout(() => el.style.borderColor = '', 2000);
         notify('⚠ 此名字已有人使用，請換一個', 'err');
-      } else {
-        notify('⚠ 加入失敗，請重試', 'err');
       }
-    } else {
-      document.getElementById('join-ok').style.display = 'block';
+      return;
     }
+    // 成功加入
+    showJoinOk(`✅ 已成功加入等待隊列！`);
   });
+}
+
+function showJoinOk(msg) {
+  const box = document.getElementById('join-ok');
+  const inp = document.getElementById('join-inp');
+  if (inp) inp.disabled = true;
+  if (box) {
+    box.style.display = 'block';
+    box.querySelector('span:first-child') || (box.firstChild.textContent = msg);
+    box.innerHTML = `${msg}<br>
+      <span style="font-weight:400;font-size:.82rem">請稍候，管理員安排上場後會輪到你</span><br>
+      <span style="font-size:.72rem;opacity:.7">房間：${roomId}</span>`;
+  }
 }
 
 /* ─── QR Code ────────────────────────────────────────────── */

@@ -7,6 +7,9 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏸</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Firebase SDK (compat v9) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     /* ===== RESET & VARIABLES ===== */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -91,6 +94,12 @@
     .header-inner { max-width: 760px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
     .header-logo { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 800; letter-spacing: -.01em; }
     .header-logo span { font-size: 1.35rem; }
+    .room-pill {
+      font-size: .68rem; font-weight: 700; color: var(--primary-h);
+      background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.25);
+      border-radius: 20px; padding: 2px 9px; max-width: 120px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
     .header-actions { display: flex; align-items: center; gap: 7px; }
 
     /* ===== BUTTONS ===== */
@@ -322,8 +331,21 @@
       display: none; padding: 14px 20px; margin-top: 14px;
       background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.3);
       border-radius: var(--radius-s); color: var(--success); font-weight: 700; font-size: .9rem;
+      line-height: 1.6;
     }
     .join-note { margin-top: 18px; font-size: .74rem; color: var(--text3); line-height: 1.8; }
+
+    /* ===== ROOM VIEW ===== */
+    #room-view {
+      min-height: 100vh; display: flex;
+      flex-direction: column; align-items: center; justify-content: center; padding: 24px;
+    }
+    .room-badge {
+      font-size: .7rem; font-weight: 800; letter-spacing: .08em;
+      color: var(--primary-h); background: rgba(139,92,246,.12);
+      border: 1px solid rgba(139,92,246,.25); border-radius: 20px;
+      padding: 3px 10px; margin-bottom: 10px; display: inline-block;
+    }
 
     /* ===== NOTIFICATION ===== */
     .notif {
@@ -337,13 +359,6 @@
     .notif.ok  { border-color: rgba(52,211,153,.5); color: var(--success); }
     .notif.err { border-color: rgba(248,113,113,.5); color: var(--danger); }
     .notif.info { border-color: rgba(251,191,36,.5); color: var(--warning); }
-
-    /* ===== PENDING BADGE ===== */
-    .pend-badge {
-      background: var(--warning); color: #000; border-radius: 50%;
-      width: 17px; height: 17px; font-size: .68rem; font-weight: 800;
-      display: inline-flex; align-items: center; justify-content: center;
-    }
 
     /* ===== EMPTY STATE ===== */
     .empty { text-align: center; padding: 28px 16px; color: var(--text3); }
@@ -367,7 +382,9 @@
       from { opacity: 0; transform: translateY(6px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .fade-in { animation: fadeIn .22s ease-out; }
+    .spin { animation: spin .9s linear infinite; display: inline-block; }
 
     /* ===== ASSIGN MODAL ===== */
     .player-pick-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; min-height: 48px; }
@@ -383,6 +400,15 @@
     .p-toggle-meta { font-size: .7rem; color: var(--text3); }
     .assign-count  { font-size: .8rem; color: var(--text2); margin-bottom: 16px; }
 
+    /* ===== LOADING OVERLAY ===== */
+    #loading-overlay {
+      position: fixed; inset: 0; z-index: 999;
+      background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    }
+    #loading-overlay .spin { font-size: 2.8rem; }
+    #loading-overlay p { color: var(--text2); font-size: .9rem; font-weight: 600; }
+
     /* ===== RESPONSIVE ===== */
     @media (max-width: 420px) {
       .stats-bar .stat-val { font-size: 1.5rem; }
@@ -393,39 +419,71 @@
 <body>
 
 <!-- ========================================================
-     JOIN VIEW  (?join=1)
+     LOADING OVERLAY
 ======================================================== -->
-<div id="join-view" class="view">
+<div id="loading-overlay" style="display:none">
+  <span class="spin">🏸</span>
+  <p>連線中…</p>
+</div>
+
+<!-- ========================================================
+     ROOM VIEW  (no ?room= param)
+======================================================== -->
+<div id="room-view" class="view">
   <div class="join-card">
     <div class="join-icon">🏸</div>
-    <div class="join-title">加入羽球場</div>
-    <div class="join-sub">掃碼進入後，輸入你的名字<br>即可加入等待隊列</div>
-    <input id="join-inp" class="join-inp" type="text" maxlength="20"
-           placeholder="你的名字…" autocomplete="off"
-           onkeydown="if(event.key==='Enter')doJoin()">
-    <button class="btn btn-gradient btn-full btn-lg" onclick="doJoin()">加入隊列 →</button>
-    <div id="join-ok" class="join-success">✅ 已送出！請告知現場管理員確認。</div>
+    <div class="join-title">羽球輪轉系統</div>
+    <div class="join-sub">輸入房間代碼進入，或建立新房間</div>
+    <input id="room-inp" class="join-inp" type="text" maxlength="30"
+           placeholder="房間代碼（例：jacko-wed）" autocomplete="off"
+           onkeydown="if(event.key==='Enter')enterRoom()">
+    <button class="btn btn-gradient btn-full btn-lg" onclick="enterRoom()">進入 / 建立房間 →</button>
     <div class="join-note">
-      ⚠️ 此系統為純前端單機版<br>
-      若管理員在同一瀏覽器中開啟此頁<br>會自動同步；否則請直接告知管理員
+      ✅ 各房間資料完全獨立，互不干擾<br>
+      ✅ 跨裝置即時同步（Firebase 雲端）<br>
+      💡 第一次輸入房間名稱會自動建立
     </div>
   </div>
 </div>
 
 <!-- ========================================================
-     ADMIN VIEW  (default / ?admin=1)
+     JOIN VIEW  (?join=1&room=xxx)
+======================================================== -->
+<div id="join-view" class="view">
+  <div class="join-card">
+    <div class="join-icon">🏸</div>
+    <div class="join-title">加入羽球場</div>
+    <div id="join-room-label" class="room-badge" style="margin-bottom:14px"></div>
+    <div class="join-sub">輸入你的名字，即可加入等待隊列</div>
+    <input id="join-inp" class="join-inp" type="text" maxlength="20"
+           placeholder="你的名字…" autocomplete="off"
+           onkeydown="if(event.key==='Enter')doJoin()">
+    <button class="btn btn-gradient btn-full btn-lg" onclick="doJoin()">加入隊列 →</button>
+    <div id="join-ok" class="join-success">
+      ✅ 已成功加入等待隊列！<br>
+      <span style="font-weight:400;font-size:.82rem">請稍候，管理員安排上場後會輪到你</span>
+    </div>
+    <div class="join-note">
+      加入後請把手機交給下一位<br>
+      或等待管理員螢幕顯示你的名字
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================
+     ADMIN VIEW  (?room=xxx)
 ======================================================== -->
 <div id="admin-view" class="view">
 
   <!-- Header -->
   <header class="header">
     <div class="header-inner">
-      <div class="header-logo"><span>🏸</span>羽球輪轉</div>
+      <div class="header-logo">
+        <span>🏸</span>羽球輪轉
+        <span id="room-label" class="room-pill"></span>
+      </div>
       <div class="header-actions">
-        <button id="pend-btn" class="btn btn-ghost btn-sm"
-                onclick="processPending()" style="display:none">
-          待確認 <span id="pend-cnt" class="pend-badge">0</span>
-        </button>
+        <button class="btn btn-ghost btn-sm" onclick="copyInviteLink()" title="複製邀請連結">🔗</button>
         <button id="theme-btn" class="btn btn-ghost btn-sm" onclick="toggleTheme()" title="切換明暗主題">🌙</button>
         <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙️ 設定</button>
       </div>
@@ -517,9 +575,12 @@
         <div class="qr-wrap">
           <div id="qrcode"></div>
           <div class="qr-url" id="qr-url"></div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn btn-ghost btn-sm btn-full" onclick="copyInviteLink()">🔗 複製邀請連結</button>
+          </div>
           <div class="qr-note">
-            掃碼後可在同一裝置新分頁中輸入名字加入<br>
-            或將網址複製給玩家自行開啟
+            掃碼後輸入名字即可即時加入隊列<br>
+            管理員畫面自動同步顯示
           </div>
         </div>
       </div>
@@ -591,7 +652,7 @@
 <div id="assign-modal" class="overlay" onclick="if(event.target===this)closeAssign()">
   <div class="modal" style="max-width:480px">
     <div class="modal-title" id="assign-title">👥 手動指定上場</div>
-    <div style="font-size:.8rem;color:var(--text2);margin-bottom:12px" id="assign-hint"></div>
+    <div style="font-size:.8rem;color:var(--text2);margin-bottom:12px;white-space:pre-line" id="assign-hint"></div>
     <div id="assign-grid" class="player-pick-grid"></div>
     <div class="assign-count" id="assign-count"></div>
     <div style="display:flex;gap:10px">
@@ -608,97 +669,155 @@
 <script>
 'use strict';
 
+/* ─── Firebase ───────────────────────────────────────────── */
+const firebaseConfig = {
+  apiKey: "AIzaSyBIab0AToCpXSptch71kKSsOhKNvK4R3qw",
+  authDomain: "badminton-queue-e8583.firebaseapp.com",
+  databaseURL: "https://badminton-queue-e8583-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "badminton-queue-e8583",
+  storageBucket: "badminton-queue-e8583.firebasestorage.app",
+  messagingSenderId: "689231878433",
+  appId: "1:689231878433:web:5b0ee5dbb6ec29a883c660"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 /* ─── Constants ─────────────────────────────────────────── */
-const SK  = 'bq_state';
-const PK  = 'bq_pending';
 const COURT_COLORS = ['#8b5cf6','#22d3ee','#fbbf24','#34d399','#f87171','#c084fc','#38bdf8'];
 
+/* ─── Room & Firebase refs ───────────────────────────────── */
+let roomId = null;
+let _fbRef = null;   // db.ref(`rooms/${roomId}`)
+
 /* ─── State ──────────────────────────────────────────────── */
-let S = load();
+let S = defaultState();
 
 function defaultState() {
   return { cfg: { courts: 2, ppc: 4, shuffle: false }, players: [], courts: [], reserves: [], _v: 0 };
 }
-function load() {
-  try {
-    const d = localStorage.getItem(SK);
-    if (d) {
-      const s = JSON.parse(d);
-      if (!s.reserves) s.reserves = [];
-      if (s.cfg.shuffle === undefined) s.cfg.shuffle = false;
-      return s;
-    }
-  } catch(_) {}
-  return defaultState();
+
+// Firebase may serialize JS arrays as plain objects — restore them
+function fixState(s) {
+  if (!s) return defaultState();
+  const fix = v => Array.isArray(v) ? v : Object.values(v || {});
+  s.players  = fix(s.players);
+  s.courts   = fix(s.courts);
+  s.reserves = fix(s.reserves).map(r => fix(r));
+  s.courts.forEach(c => {
+    c.players = fix(c.players);
+    if (c.nextPlayers) c.nextPlayers = fix(c.nextPlayers);
+  });
+  if (!s.cfg) s.cfg = { courts: 2, ppc: 4, shuffle: false };
+  if (s.cfg.shuffle === undefined) s.cfg.shuffle = false;
+  return s;
 }
+
 function save() {
   S._v = (S._v || 0) + 1;
-  localStorage.setItem(SK, JSON.stringify(S));
-}
-
-/* ─── BroadcastChannel (same-browser cross-tab sync) ────── */
-let ch = null;
-try {
-  ch = new BroadcastChannel('bq_chan');
-  ch.onmessage = ev => {
-    if (ev.data.type === 'JOIN') {
-      const n = ev.data.name;
-      if (addPlayer(n, true)) { notify(`✅ ${n} 已加入！`, 'ok'); renderAll(); }
-    } else if (ev.data.type === 'SYNC') {
-      S = ev.data.state;
-      renderAll();
-    }
-  };
-} catch(_) {}
-
-function broadcast(type, payload = {}) {
-  if (!ch) return;
-  try { ch.postMessage({ type, ...payload }); } catch(_) {}
+  if (_fbRef) _fbRef.set(JSON.parse(JSON.stringify(S)));
 }
 
 /* ─── URL detection ──────────────────────────────────────── */
-const P     = new URLSearchParams(location.search);
-const isJoin = P.has('join');
+const P         = new URLSearchParams(location.search);
+const isJoin    = P.has('join');
+const roomParam = P.get('room');
+
+/* ─── Utils ──────────────────────────────────────────────── */
+function uid()  { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function pad(n) { return String(n).padStart(2,'0'); }
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+function sanitizeRoomId(s) {
+  return s.toLowerCase()
+    .replace(/[^a-z0-9\-\_]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30);
+}
+
+function showLoading(on) {
+  const el = document.getElementById('loading-overlay');
+  if (el) el.style.display = on ? 'flex' : 'none';
+}
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
 
 /* ─── Init ───────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+  applyTheme(localStorage.getItem('bq_theme') || 'dark');
+
+  // No room param → show room selection screen
+  if (!roomParam) {
+    show('room-view');
+    const inp = document.getElementById('room-inp');
+    if (inp) inp.focus();
+    return;
+  }
+
+  roomId = sanitizeRoomId(roomParam);
+  if (!roomId) { show('room-view'); return; }
+
+  _fbRef = db.ref(`rooms/${roomId}`);
+
   if (isJoin) {
+    // ── Player join view ──
     show('join-view');
-    document.getElementById('join-inp').focus();
+    const lbl = document.getElementById('join-room-label');
+    if (lbl) lbl.textContent = `房間：${roomId}`;
+    const inp = document.getElementById('join-inp');
+    if (inp) inp.focus();
+
   } else {
+    // ── Admin view ──
     show('admin-view');
-    syncCourts();
-    cleanState();
-    renderAll();
-    genQR();
-    checkPending();
-    setInterval(checkPending, 3000);
-    setInterval(tickTimers, 1000);
-    window.addEventListener('storage', e => {
-      if (e.key === SK && e.newValue)  { S = JSON.parse(e.newValue); renderAll(); }
-      if (e.key === PK)                checkPending();
+    const rl = document.getElementById('room-label');
+    if (rl) rl.textContent = roomId;
+
+    showLoading(true);
+
+    _fbRef.on('value', snap => {
+      const data   = snap.val();
+      const isNew  = !data;
+      S = fixState(data);
+      syncCourts();
+      if (isNew) save();  // initialise new room in Firebase
+      cleanState();
+      renderAll();
+      genQR();
+      showLoading(false);
     });
+
+    setInterval(tickTimers, 1000);
   }
 });
 
-function show(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+/* ─── Room screen ────────────────────────────────────────── */
+function enterRoom() {
+  const inp = document.getElementById('room-inp');
+  const raw = inp ? inp.value.trim() : '';
+  if (!raw) {
+    if (inp) { inp.style.borderColor = 'var(--danger)'; setTimeout(() => inp.style.borderColor='', 2000); }
+    return;
+  }
+  const rid = sanitizeRoomId(raw);
+  if (!rid) { notify('⚠ 只能包含英文字母、數字、連字符', 'err'); return; }
+  location.href = `${location.pathname}?room=${rid}`;
 }
 
 /* ─── State helpers ──────────────────────────────────────── */
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
-
 function syncCourts() {
   const n = S.cfg.courts;
   while (S.courts.length < n)
     S.courts.push({ id: S.courts.length + 1, players: [], ts: null });
-  // trim extra empty courts
-  while (S.courts.length > n && S.courts[S.courts.length-1].players.length === 0)
+  while (S.courts.length > n && S.courts[S.courts.length - 1].players.length === 0)
     S.courts.pop();
-  // renumber
   S.courts.forEach((c, i) => c.id = i + 1);
-  save();
 }
 
 function cleanState() {
@@ -718,9 +837,9 @@ function addPlayer(name, silent = false) {
     return false;
   }
   S.players.push({ id: uid(), name, joined: Date.now(), games: 0, status: 'waiting' });
-  save();
   return true;
 }
+
 function removePlayer(id) {
   const p = S.players.find(x => x.id === id);
   if (!p) return;
@@ -736,11 +855,12 @@ function removePlayer(id) {
     save(); renderAll();
   }
 }
+
 function manualAdd() {
   const el = document.getElementById('manual-inp');
   const n  = el.value.trim();
   if (!n) return;
-  if (addPlayer(n)) { el.value = ''; notify(`✅ ${n} 已加入！`, 'ok'); renderAll(); }
+  if (addPlayer(n)) { el.value = ''; save(); notify(`✅ ${n} 已加入！`, 'ok'); renderAll(); }
 }
 
 /* ─── Algorithm: sorted waiting ─────────────────────────── */
@@ -749,7 +869,6 @@ function waitingByPriority() {
     .filter(p => p.status === 'waiting')
     .sort((a, b) => a.games !== b.games ? a.games - b.games : a.joined - b.joined);
   if (!S.cfg.shuffle) return list;
-  // 相同次數內隨機打亂，避免永遠同組
   const out = [];
   let i = 0;
   while (i < list.length) {
@@ -766,27 +885,25 @@ function waitingByPriority() {
 }
 
 /* ─── Rounds ─────────────────────────────────────────────── */
-// 嘗試用 reserve / nextPlayers / 演算法 填一個空場地，回傳是否成功
 function fillOneCourt(court) {
   const ppc = S.cfg.ppc;
+
   // 1. court-specific 預排
   const nextValid = (court.nextPlayers || []).filter(
     id => S.players.find(p => p.id === id && p.status === 'waiting'));
   court.nextPlayers = null;
   if (nextValid.length >= 2) {
-    // 先標記預排玩家為 playing，再用演算法補滿剩餘名額
     nextValid.forEach(id => { const p = S.players.find(x => x.id === id); if (p) p.status = 'playing'; });
     let finalIds = [...nextValid];
     if (finalIds.length < ppc) {
-      const used = new Set(finalIds);
-      const extras = waitingByPriority()
-        .filter(p => !used.has(p.id))
-        .slice(0, ppc - finalIds.length);
+      const used   = new Set(finalIds);
+      const extras = waitingByPriority().filter(p => !used.has(p.id)).slice(0, ppc - finalIds.length);
       extras.forEach(p => { p.status = 'playing'; finalIds.push(p.id); });
     }
     court.players = finalIds; court.ts = Date.now();
     return 'next';
   }
+
   // 2. 浮動候補預排 (reserves)
   const ri = (S.reserves || []).findIndex(r => {
     const valid = r.filter(id => S.players.find(p => p.id === id && p.status === 'waiting'));
@@ -799,6 +916,7 @@ function fillOneCourt(court) {
     ids.forEach(id => { const p = S.players.find(x => x.id === id); if (p) p.status = 'playing'; });
     return 'reserve';
   }
+
   // 3. 演算法 — 排除已被其他場地預排的玩家，避免搶佔
   const reservedByOthers = new Set(
     S.courts.filter(c => c.id !== court.id && c.nextPlayers).flatMap(c => c.nextPlayers)
@@ -826,9 +944,7 @@ function startRound() {
       notify('💬 所有場地均已有人在打', 'info');
     return;
   }
-  save();
-  broadcast('SYNC', { state: S });
-  renderAll();
+  save(); renderAll();
   notify(`✅ 已安排 ${filled} 個場地！`, 'ok');
 }
 
@@ -846,18 +962,14 @@ function endCourt(cid) {
         const p = S.players.find(x => x.id === id);
         if (p) { p.games++; p.status = 'waiting'; }
       });
-      court.players = [];
-      court.ts = null;
+      court.players = []; court.ts = null;
 
-      // Auto-fill via fillOneCourt
       const how = fillOneCourt(court);
-      if (how === 'next')    notify(`✅ 場地 ${cid} 套用場地預排上場！`, 'ok');
+      if (how === 'next')         notify(`✅ 場地 ${cid} 套用場地預排上場！`, 'ok');
       else if (how === 'reserve') notify(`✅ 場地 ${cid} 套用候補預排上場！`, 'ok');
       else if (how === 'auto')    notify(`✅ 場地 ${cid} 自動安排下一輪！`, 'ok');
       else                        notify(`✅ 場地 ${cid} 結束，等待排隊中`, 'ok');
-      save();
-      broadcast('SYNC', { state: S });
-      renderAll();
+      save(); renderAll();
     }
   );
 }
@@ -951,21 +1063,17 @@ function tickTimers() {
     el.textContent = `⏱ ${pad(Math.floor(s/60))}:${pad(s%60)}`;
   });
 }
-function pad(n) { return String(n).padStart(2,'0'); }
 
 function renderQueue() {
-  const el = document.getElementById('queue-list'); if (!el) return;
-  const q  = waitingByPriority();
+  const el  = document.getElementById('queue-list'); if (!el) return;
+  const q   = waitingByPriority();
   const ppc = S.cfg.ppc;
   if (!q.length) {
     el.innerHTML = `<div class="empty"><div class="empty-icon">🪑</div><div class="empty-txt">目前沒有等待中的玩家</div></div>`;
     return;
   }
-
-  // count empty courts that can be filled
   const emptyCourts = S.courts.filter(c => c.players.length === 0).length;
   const nextUp = emptyCourts * ppc;
-
   el.innerHTML = `
     <div class="queue-list">
       ${q.map((p, i) => `
@@ -1005,14 +1113,13 @@ function renderRank() {
 }
 
 function renderManageList() {
-  const el  = document.getElementById('manage-list');  if (!el) return;
+  const el  = document.getElementById('manage-list'); if (!el) return;
   const cnt = document.getElementById('manage-count');
   if (!S.players.length) {
     el.innerHTML = '<div style="font-size:.82rem;color:var(--text3);padding:6px 0">尚無玩家</div>';
     if (cnt) cnt.textContent = '';
     return;
   }
-  // 依加入順序顯示，方便管理員對照
   const list = [...S.players].sort((a, b) => a.joined - b.joined);
   if (cnt) cnt.textContent = `共 ${list.length} 人`;
   el.innerHTML = list.map(p => {
@@ -1031,53 +1138,49 @@ function renderManageList() {
   }).join('');
 }
 
-/* ─── Join View ──────────────────────────────────────────── */
+/* ─── Join View (player on phone) ────────────────────────── */
 function doJoin() {
-  const el  = document.getElementById('join-inp');
+  const el   = document.getElementById('join-inp');
   const name = el.value.trim();
-  if (!name) { el.style.borderColor = 'var(--danger)'; setTimeout(() => el.style.borderColor = '', 2000); return; }
+  if (!name) {
+    el.style.borderColor = 'var(--danger)';
+    setTimeout(() => el.style.borderColor = '', 2000);
+    return;
+  }
+  if (!_fbRef) { notify('⚠ 尚未連線，請稍後再試', 'err'); return; }
 
-  // Try same-browser channel
-  broadcast('JOIN', { name });
-
-  // Also write to pending in localStorage
-  try {
-    const arr = JSON.parse(localStorage.getItem(PK) || '[]');
-    arr.push({ name, ts: Date.now() });
-    localStorage.setItem(PK, JSON.stringify(arr));
-  } catch(_) {}
-
-  document.getElementById('join-ok').style.display = 'block';
   el.disabled = true;
   document.querySelector('#join-view .btn').disabled = true;
-}
 
-/* ─── Pending joins (cross-device hint) ─────────────────── */
-function checkPending() {
-  try {
-    const arr = JSON.parse(localStorage.getItem(PK) || '[]');
-    const btn = document.getElementById('pend-btn');
-    const cnt = document.getElementById('pend-cnt');
-    if (!btn) return;
-    btn.style.display = arr.length ? 'flex' : 'none';
-    if (cnt) cnt.textContent = arr.length;
-  } catch(_) {}
-}
-function processPending() {
-  try {
-    const arr  = JSON.parse(localStorage.getItem(PK) || '[]');
-    if (!arr.length) return;
-    let added = 0;
-    arr.forEach(item => { if (addPlayer(item.name, true)) added++; });
-    localStorage.removeItem(PK);
-    checkPending(); renderAll();
-    if (added) notify(`✅ 已加入 ${added} 位玩家`, 'ok');
-  } catch(_) {}
+  // Firebase transaction：安全地加入玩家（防止同名或同時加入）
+  _fbRef.transaction(state => {
+    if (!state) return state; // room not found → abort
+    const players = Array.isArray(state.players) ? state.players : Object.values(state.players || {});
+    if (players.find(p => p.name === name)) return; // duplicate → abort
+    players.push({ id: uid(), name, joined: Date.now(), games: 0, status: 'waiting' });
+    state.players = players;
+    return state;
+  }, (error, committed) => {
+    if (!committed) {
+      el.disabled = false;
+      document.querySelector('#join-view .btn').disabled = false;
+      if (!error) {
+        el.style.borderColor = 'var(--danger)';
+        setTimeout(() => el.style.borderColor = '', 2000);
+        notify('⚠ 此名字已有人使用，請換一個', 'err');
+      } else {
+        notify('⚠ 加入失敗，請重試', 'err');
+      }
+    } else {
+      document.getElementById('join-ok').style.display = 'block';
+    }
+  });
 }
 
 /* ─── QR Code ────────────────────────────────────────────── */
 function genQR() {
-  const url = location.href.replace(/\?.*$/, '') + '?join=1';
+  if (!roomId) return;
+  const url = `${location.origin}${location.pathname}?room=${roomId}&join=1`;
   document.getElementById('qr-url').textContent = url;
   const div = document.getElementById('qrcode');
   div.innerHTML = '';
@@ -1087,10 +1190,26 @@ function genQR() {
   } catch(e) { div.textContent = '無法產生 QR Code'; }
 }
 
+function copyInviteLink() {
+  if (!roomId) return;
+  const url = `${location.origin}${location.pathname}?room=${roomId}&join=1`;
+  navigator.clipboard.writeText(url)
+    .then(() => notify('✅ 邀請連結已複製！', 'ok'))
+    .catch(() => {
+      // fallback for http / older browsers
+      const el = document.createElement('textarea');
+      el.value = url; el.style.position = 'fixed'; el.style.opacity = '0';
+      document.body.appendChild(el); el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      notify('✅ 邀請連結已複製！', 'ok');
+    });
+}
+
 /* ─── Settings ───────────────────────────────────────────── */
 function openSettings() {
-  document.getElementById('set-courts').value  = S.cfg.courts;
-  document.getElementById('set-players').value = S.cfg.ppc;
+  document.getElementById('set-courts').value   = S.cfg.courts;
+  document.getElementById('set-players').value  = S.cfg.ppc;
   document.getElementById('set-shuffle').checked = !!S.cfg.shuffle;
   document.getElementById('settings-modal').classList.add('open');
 }
@@ -1102,6 +1221,7 @@ function saveSettings() {
   S.cfg.ppc     = p;
   S.cfg.shuffle = document.getElementById('set-shuffle').checked;
   syncCourts();
+  save();
   closeSettings();
   renderAll();
   notify('✅ 設定已儲存', 'ok');
@@ -1109,10 +1229,9 @@ function saveSettings() {
 function askReset() {
   closeSettings();
   confirm_('確認重置所有資料', '這將清除所有玩家名單和比賽記錄。\n此操作無法復原。', () => {
-    localStorage.removeItem(SK);
-    localStorage.removeItem(PK);
     S = defaultState();
     syncCourts();
+    save();
     renderAll();
     notify('✅ 資料已重置', 'ok');
   });
@@ -1188,12 +1307,10 @@ function removeReserve(i) {
 /* ─── Manual assign (約戰/指定上場) ─────────────────────── */
 let _aCourt = null;
 let _aSel   = new Set();
-
-let _aMode = 'now'; // 'now' | 'next' | 'reserve'
+let _aMode  = 'now'; // 'now' | 'next' | 'reserve'
 
 function openReserve() {
   _aCourt = null; _aSel = new Set(); _aMode = 'reserve';
-  const ppc = S.cfg.ppc;
   document.getElementById('assign-title').textContent = `📋 候補預排（不指定場地）`;
   document.getElementById('assign-hint').textContent  =
     `選好的人將加入浮動候補列表，任意場地空出來時自動優先上場。\n與「預排下場」不同，此候補不綁定特定場地。`;
@@ -1215,9 +1332,7 @@ function openAssign(courtId) {
 function openPreAssign(courtId) {
   _aCourt = courtId; _aMode = 'next';
   const court = S.courts.find(c => c.id === courtId);
-  // 預填上次已設定的預排
   _aSel = new Set(court?.nextPlayers || []);
-  const ppc = S.cfg.ppc;
   document.getElementById('assign-title').textContent = `📋 預排場地 ${courtId}（指定下一場）`;
   document.getElementById('assign-hint').textContent  =
     `選好的人將在本場地結束後直接優先上場。人數不足時系統自動從等待隊列補滿。`;
@@ -1262,11 +1377,11 @@ function confirmAssign() {
   if (_aSel.size < 2) return;
   const ids = [..._aSel];
 
-  // 候補預排：不需要指定場地，直接加入浮動候補
+  // 候補預排：不需要指定場地
   if (_aMode === 'reserve') {
     if (!S.reserves) S.reserves = [];
     S.reserves.push(ids);
-    save(); broadcast('SYNC', { state: S }); renderAll(); closeAssign();
+    save(); renderAll(); closeAssign();
     const names = ids.map(id => S.players.find(p => p.id === id)?.name || '?').join('、');
     notify(`📋 候補預排已加入：${names}`, 'ok');
     return;
@@ -1276,9 +1391,8 @@ function confirmAssign() {
   if (!court) return;
 
   if (_aMode === 'next') {
-    // 僅儲存預排，不立即上場
     court.nextPlayers = ids;
-    save(); broadcast('SYNC', { state: S }); renderAll(); closeAssign();
+    save(); renderAll(); closeAssign();
     const names = ids.map(id => S.players.find(p => p.id === id)?.name || '?').join('、');
     notify(`📋 場地 ${_aCourt} 預排完成：${names}`, 'ok');
   } else {
@@ -1288,7 +1402,7 @@ function confirmAssign() {
       const p = S.players.find(x => x.id === id);
       if (p) p.status = 'playing';
     });
-    save(); broadcast('SYNC', { state: S }); renderAll(); closeAssign();
+    save(); renderAll(); closeAssign();
     notify(`✅ 場地 ${_aCourt} 已手動安排 ${ids.length} 人上場！`, 'ok');
   }
 }
@@ -1316,7 +1430,7 @@ function simLoad(n) {
 function simRandomGames() {
   if (!S.players.length) { notify('⚠ 請先加入玩家', 'err'); return; }
   S.players.filter(p => p.status === 'waiting').forEach(p => {
-    p.games = Math.floor(Math.random() * 5); // 0–4 局
+    p.games = Math.floor(Math.random() * 5);
   });
   save(); renderAll();
   notify('🎲 已隨機分配次數', 'ok');
@@ -1337,20 +1451,12 @@ function applyTheme(t) {
   if (btn) btn.textContent = t === 'light' ? '🌙' : '☀️';
 }
 function toggleTheme() {
-  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  const cur  = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = cur === 'dark' ? 'light' : 'dark';
   applyTheme(next);
   localStorage.setItem('bq_theme', next);
 }
-// 啟動時套用儲存的主題
 (function() { applyTheme(localStorage.getItem('bq_theme') || 'dark'); })();
-
-/* ─── Utils ──────────────────────────────────────────────── */
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
 </script>
 </body>
 </html>

@@ -625,6 +625,16 @@
       <label class="form-lbl" style="color:var(--danger)">⚠ 重置資料</label>
       <button class="btn btn-danger btn-sm" onclick="askReset()">清除所有玩家資料</button>
     </div>
+    <div class="form-group" style="margin-top:8px; padding-top:16px; border-top:1px solid var(--border)">
+      <label class="form-lbl" style="color:var(--danger)">🗑 結束並刪除房間</label>
+      <div style="font-size:.75rem;color:var(--text3);margin-bottom:8px;line-height:1.6">
+        刪除 Firebase 上此房間的所有資料，回到房間選擇畫面。<br>適合每次球局結束後使用，資料不累積。
+      </div>
+      <button class="btn btn-sm" onclick="askCloseRoom()"
+        style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.35)">
+        🗑 結束房間「<span id="settings-room-label"></span>」
+      </button>
+    </div>
     <div style="display:flex;gap:10px;margin-top:20px">
       <button class="btn btn-ghost" style="flex:1" onclick="closeSettings()">取消</button>
       <button class="btn btn-primary" style="flex:1" onclick="saveSettings()">儲存設定</button>
@@ -1211,6 +1221,8 @@ function openSettings() {
   document.getElementById('set-courts').value   = S.cfg.courts;
   document.getElementById('set-players').value  = S.cfg.ppc;
   document.getElementById('set-shuffle').checked = !!S.cfg.shuffle;
+  const lbl = document.getElementById('settings-room-label');
+  if (lbl) lbl.textContent = roomId || '';
   document.getElementById('settings-modal').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
@@ -1235,6 +1247,24 @@ function askReset() {
     renderAll();
     notify('✅ 資料已重置', 'ok');
   });
+}
+
+function askCloseRoom() {
+  closeSettings();
+  confirm_(
+    `🗑 結束並刪除房間`,
+    `房間「${roomId}」的所有資料將從 Firebase 永久刪除。\n\n確認後將回到房間選擇畫面。\n此操作無法復原。`,
+    () => {
+      if (_fbRef) {
+        _fbRef.off();          // 先關掉 onValue 監聽，避免刪除觸發異常渲染
+        _fbRef.remove(() => {
+          location.href = location.pathname; // 回首頁（房間選擇）
+        });
+      } else {
+        location.href = location.pathname;
+      }
+    }
+  );
 }
 
 /* ─── Tabs ───────────────────────────────────────────────── */

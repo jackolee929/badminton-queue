@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+# 機敏與本機資料
+.env
+*.env
+*.db
+*.sqlite
+credentials.json
+secrets/
+# 產物與暫存
+dist/
+build/
+*.log
+*.exe
+.vscode/

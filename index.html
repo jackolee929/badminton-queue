@@ -2,684 +2,870 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>🏸 羽球輪轉系統</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏸</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>羽球輪轉</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%225%22 fill=%22%231D5C44%22/><g fill=%22none%22 stroke=%22white%22 stroke-width=%221.8%22 stroke-linecap=%22round%22><circle cx=%2212%22 cy=%2218.5%22 r=%222.4%22/><path d=%22M10 16.4 6 6.5M14 16.4l4-9.9M12 16V5M6 6.5c3.7-1.8 8.3-1.8 12 0%22/></g></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- Firebase SDK (compat v9) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    /* ===== RESET & VARIABLES ===== */
+    /* ============ 設計語言：羽球館 ============
+       紙色底 / 球場綠 / 場線白 / 警示黃（只用於「叫號」）
+       無漸層、無毛玻璃、無發光；數字用窄體，像記分板 */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    /* ── Dark theme (default) ── */
     :root {
-      --bg:        #080812;
-      --bg-card:   #0f0f1e;
-      --bg-card2:  #16162a;
-      --bg-input:  #1c1c32;
-      --primary:   #8b5cf6;
-      --primary-h: #a78bfa;
-      --accent:    #22d3ee;
-      --success:   #34d399;
-      --warning:   #fbbf24;
-      --danger:    #f87171;
-      --text:      #eeeeff;
-      --text2:     #8888aa;
-      --text3:     #50506a;
-      --border:    rgba(255,255,255,0.07);
-      --radius:    14px;
-      --radius-s:  9px;
-      --shadow:    0 8px 32px rgba(0,0,0,0.5);
-      --header-bg: rgba(8,8,18,.96);
-      --bar-bg:    rgba(8,8,18,.96);
-      --glow1:     rgba(139,92,246,.06);
-      --glow2:     rgba(34,211,238,.04);
+      --paper: #F2EFE7; --card: #FBFAF5; --ink: #1B211E; --ink2: #56605A; --ink3: #8C948E;
+      --line: #D9D4C6; --green: #1D5C44; --green-ink: #FFFFFF; --green-soft: #DCE8E0;
+      --call: #D99A00; --call-soft: #FBEFC9; --red: #B13A2A; --red-soft: #F3DAD4;
+      --court: #2A6B50; --court-line: rgba(255,255,255,.88); --court-line2: rgba(255,255,255,.34);
+      --r: 6px;
     }
-    /* ── Light theme ── */
-    html[data-theme="light"] {
-      --bg:        #f0f2f9;
-      --bg-card:   #ffffff;
-      --bg-card2:  #e8ecf6;
-      --bg-input:  #edf0f9;
-      --primary:   #7c3aed;
-      --primary-h: #6d28d9;
-      --accent:    #0891b2;
-      --success:   #059669;
-      --warning:   #d97706;
-      --danger:    #dc2626;
-      --text:      #1a1a2e;
-      --text2:     #4a4a6e;
-      --text3:     #9090b8;
-      --border:    rgba(0,0,0,0.09);
-      --shadow:    0 4px 24px rgba(0,0,0,0.12);
-      --header-bg: rgba(240,242,249,.97);
-      --bar-bg:    rgba(240,242,249,.97);
-      --glow1:     rgba(124,58,237,.04);
-      --glow2:     rgba(8,145,178,.03);
+    html[data-theme="dark"] {
+      --paper: #101413; --card: #181D1B; --ink: #ECE8DD; --ink2: #A5ADA7; --ink3: #6D7671;
+      --line: #2A312E; --green: #5DB78C; --green-ink: #0C1812; --green-soft: #1C3127;
+      --call: #F0BA1A; --call-soft: #382F10; --red: #E27560; --red-soft: #3A211C;
+      --court: #1E4A38; --court-line: rgba(236,232,221,.82); --court-line2: rgba(236,232,221,.3);
     }
-    html { font-size: 16px; scroll-behavior: smooth; }
+    html { font-size: 16px; }
     body {
-      font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
+      font-family: 'Noto Sans TC', -apple-system, 'Segoe UI', sans-serif;
+      background: var(--paper); color: var(--ink); min-height: 100vh;
+      -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.5;
     }
-    body::before {
-      content: '';
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 10% 5%, var(--glow1) 0%, transparent 70%),
-        radial-gradient(ellipse 60% 40% at 90% 90%, var(--glow2) 0%, transparent 60%);
-    }
+    .num { font-family: 'Barlow Condensed', 'Noto Sans TC', sans-serif; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+    .i { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .i-lg { width: 24px; height: 24px; }
 
-    /* ===== VIEW SWITCH ===== */
-    .view { display: none; position: relative; z-index: 1; }
+    .view { display: none; }
     .view.active { display: block; }
+    #room-view.active, #missing-view.active, #join-view.active { display: flex; }
+    .center { min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; gap: 14px; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 110px; }
 
-    /* ===== CONTAINER ===== */
-    .container { max-width: 760px; margin: 0 auto; padding: 0 14px 90px; }
-
-    /* ===== HEADER ===== */
-    .header {
-      position: sticky; top: 0; z-index: 100;
-      background: var(--header-bg);
-      backdrop-filter: blur(24px);
-      border-bottom: 1px solid var(--border);
-      padding: 11px 16px;
-    }
-    .header-inner { max-width: 760px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
-    .header-logo { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 800; letter-spacing: -.01em; }
-    .header-logo span { font-size: 1.35rem; }
-    .room-pill {
-      font-size: .72rem; font-weight: 700; color: var(--primary-h);
-      background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.25);
-      border-radius: 20px; padding: 3px 11px;
-    }
-    .header-actions { display: flex; align-items: center; gap: 7px; }
-
-    /* ===== BUTTONS ===== */
+    /* ---- 按鈕 ---- */
     .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-      padding: 9px 18px; border: none; border-radius: var(--radius-s);
-      font-size: .88rem; font-weight: 700; font-family: inherit;
-      cursor: pointer; transition: all .18s; white-space: nowrap; user-select: none;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 38px; padding: 0 16px; border-radius: var(--r); border: 1.5px solid var(--ink);
+      background: transparent; color: var(--ink); font: 600 .88rem/1 inherit; font-family: inherit;
+      cursor: pointer; white-space: nowrap; user-select: none; transition: background .12s, color .12s;
     }
-    .btn:active { transform: scale(.95); }
-    .btn:disabled { opacity: .45; cursor: not-allowed; }
-    .btn:disabled:active { transform: none; }
-    .btn-primary  { background: var(--primary); color: #fff; }
-    .btn-primary:hover  { background: var(--primary-h); }
-    .btn-gradient { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: #fff; }
-    .btn-gradient:hover { filter: brightness(1.1); }
-    .btn-success  { background: var(--success); color: #052b1a; }
-    .btn-danger   { background: var(--danger);  color: #fff; }
-    .btn-ghost    { background: var(--bg-card2); color: var(--text2); border: 1px solid var(--border); }
-    .btn-ghost:hover { border-color: var(--primary); color: var(--primary-h); }
-    .btn-sm  { padding: 6px 12px; font-size: .78rem; }
-    .btn-lg  { padding: 15px 28px; font-size: 1rem; }
-    .btn-full { width: 100%; }
+    .btn:hover { background: var(--ink); color: var(--paper); }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--green); border-color: var(--green); color: var(--green-ink); }
+    .btn-primary:hover { background: var(--green); filter: brightness(1.12); color: var(--green-ink); }
+    .btn-ink { background: var(--ink); color: var(--paper); }
+    .btn-ink:hover { filter: brightness(1.25); background: var(--ink); color: var(--paper); }
+    .btn-danger { border-color: var(--red); color: var(--red); }
+    .btn-danger:hover { background: var(--red); color: #fff; }
+    .btn-quiet { border-color: var(--line); color: var(--ink2); }
+    .btn-quiet:hover { border-color: var(--ink); background: transparent; color: var(--ink); }
+    .btn-sm { height: 32px; padding: 0 12px; font-size: .8rem; }
+    .btn-lg { height: 52px; font-size: 1rem; }
+    .btn-block { width: 100%; }
+    .btn-sq { width: 36px; height: 36px; padding: 0; }
 
-    /* ===== STATS BAR ===== */
-    .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
-    .stat-box {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 12px 8px; text-align: center;
-    }
-    .stat-val { font-size: 1.8rem; font-weight: 900; color: var(--primary-h); line-height: 1; }
-    .stat-lbl { font-size: .68rem; color: var(--text3); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    /* ---- 頂欄 ---- */
+    .topbar { position: sticky; top: 0; z-index: 50; background: var(--paper); border-bottom: 1px solid var(--line); }
+    .topbar-in { max-width: 720px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .mark { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.05rem; letter-spacing: .02em; }
+    .mark .i { color: var(--green); }
+    .roomtag { font: 600 .74rem/1 ui-monospace, 'Cascadia Mono', Consolas, monospace; color: var(--ink2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 7px; margin-left: 4px; }
+    .tools { display: flex; gap: 6px; }
 
-    /* ===== SECTION ===== */
-    .section { margin-bottom: 20px; }
-    .section-hd {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 10px;
-    }
-    .section-title {
-      font-size: .72rem; font-weight: 800; text-transform: uppercase;
-      letter-spacing: .12em; color: var(--text3);
-      display: flex; align-items: center; gap: 6px;
-    }
-    .count-pill {
-      background: var(--bg-input); color: var(--text2);
-      padding: 2px 8px; border-radius: 20px; font-size: .72rem; font-weight: 600;
-    }
+    /* ---- 記分板 ---- */
+    .score { display: grid; grid-template-columns: repeat(3, 1fr); margin: 18px 0 22px; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
+    .score > div { padding: 10px 0 8px 14px; border-left: 1px solid var(--line); }
+    .score > div:first-child { border-left: 0; padding-left: 0; }
+    .score .v { font-size: 2.5rem; font-weight: 700; line-height: 1; }
+    .score .k { font-size: .72rem; color: var(--ink3); margin-top: 4px; letter-spacing: .08em; }
 
-    /* ===== COURT CARD ===== */
-    .court-card {
-      background: var(--bg-card); border-radius: var(--radius);
-      border: 1px solid var(--border); overflow: hidden;
-      margin-bottom: 10px; transition: border-color .3s, box-shadow .3s;
-    }
-    .court-card.active {
-      border-color: rgba(52,211,153,.35);
-      box-shadow: 0 0 24px rgba(52,211,153,.08);
-    }
-    .court-card.empty { border-style: dashed; opacity: .65; }
-    .court-hd {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 14px; background: var(--bg-card2); border-bottom: 1px solid var(--border);
-    }
-    .court-title { font-weight: 800; display: flex; align-items: center; gap: 8px; font-size: .95rem; }
-    .court-dot { width: 9px; height: 9px; border-radius: 50%; }
-    .badge {
-      font-size: .65rem; font-weight: 800; padding: 3px 9px; border-radius: 20px;
-      text-transform: uppercase; letter-spacing: .06em;
-    }
-    .badge-on   { background: rgba(52,211,153,.18); color: var(--success); }
-    .badge-off  { background: rgba(148,163,184,.1);  color: var(--text2); }
-    .court-body-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px; }
-    .player-chip {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--bg-input); border-radius: var(--radius-s); padding: 8px 11px;
-    }
-    .avatar {
-      width: 30px; height: 30px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: .78rem; font-weight: 800; color: #fff; flex-shrink: 0;
-    }
-    .chip-name { font-weight: 700; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .court-empty-msg { padding: 22px; text-align: center; color: var(--text3); font-size: .85rem; }
-    .court-ft {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 9px 14px; border-top: 1px solid var(--border);
-      background: rgba(0,0,0,.2);
-    }
-    .court-timer { font-size: .78rem; color: var(--text2); font-variant-numeric: tabular-nums; }
+    .sec-h { display: flex; align-items: center; gap: 10px; font-size: .74rem; font-weight: 700; letter-spacing: .12em; color: var(--ink2); margin: 0 0 10px; }
+    .sec-h::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+    .sec-h .btn { order: 2; }
+    .sec-h::after { order: 1; }
 
-    /* ===== TABS ===== */
-    .tabs {
-      display: flex; background: var(--bg-card2); border-radius: var(--radius-s);
-      padding: 3px; margin-bottom: 12px; border: 1px solid var(--border);
-    }
-    .tab {
-      flex: 1; padding: 9px; text-align: center; font-size: .8rem; font-weight: 700;
-      color: var(--text2); cursor: pointer; border-radius: 7px; transition: all .18s;
-    }
-    .tab.active { background: var(--bg-card); color: var(--text); }
+    /* ---- 球場卡 ---- */
+    .courts { display: grid; gap: 14px; margin-bottom: 26px; }
+    .court { background: var(--card); border: 1.5px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .court.called { border-color: var(--call); }
+    .court.playing { border-color: var(--green); }
+    .court-hd { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 8px; gap: 8px; }
+    .court-no { display: flex; align-items: baseline; gap: 8px; }
+    .court-no .n { font-size: 1.7rem; font-weight: 700; line-height: 1; }
+    .court-no .t { font-size: .8rem; color: var(--ink2); font-weight: 600; }
+    .st { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 700; }
+    .st::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ink3); }
+    .st.called { color: var(--call); } .st.called::before { background: var(--call); }
+    .st.playing { color: var(--green); } .st.playing::before { background: var(--green); }
+    .st.idle { color: var(--ink3); }
+    .face { --cl: var(--court-line); --cl2: var(--court-line2); position: relative; margin: 0 12px; aspect-ratio: 2.05 / 1; min-height: 150px;
+            background: var(--court); border-radius: 3px; display: grid; grid-template-columns: 1fr 1fr; color: #fff; }
+    .face::before { content: ''; position: absolute; inset: 7px; border: 2px solid var(--cl); pointer-events: none; }
+    .ln { position: absolute; background: var(--cl2); pointer-events: none; }
+    .ln.net { left: calc(50% - 2px); width: 4px; top: 3px; bottom: 3px; background: var(--cl); }
+    .ln.ss { width: 1.5px; top: 7px; bottom: 7px; } .ln.ss.a { left: 35%; } .ln.ss.b { left: 65%; }
+    .ln.cl { height: 1.5px; top: 50%; } .ln.cl.a { left: 7px; width: calc(35% - 7px); } .ln.cl.b { left: 65%; right: 7px; }
+    .ln.sd { height: 1.5px; left: 7px; right: 7px; } .ln.sd.a { top: 15%; } .ln.sd.b { bottom: 15%; }
+    .face.called { background: color-mix(in srgb, var(--court) 78%, var(--call)); }
+    .face.idle { background: transparent; --cl: var(--line); --cl2: var(--line); color: var(--ink3); }
+    .idle-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; letter-spacing: .3em; font-size: .85rem; }
+    .side { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: space-evenly; padding: 14px 18px; min-width: 0; }
+    .side:last-child { align-items: flex-end; text-align: right; }
+    .pl { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 1rem; text-shadow: 0 1px 2px rgba(0,0,0,.35); min-width: 0; }
+    .side:last-child .pl { flex-direction: row-reverse; }
+    .pl-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pl-x { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.7); background: rgba(0,0,0,.18); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; padding: 0; }
+    .pl-x .i { width: 12px; height: 12px; }
+    .pl-x:hover { background: #fff; color: var(--court); }
+    .court-ft { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px 12px; flex-wrap: wrap; }
+    .timer { font-size: 1.35rem; font-weight: 600; color: var(--ink); line-height: 1; }
+    .timer small { font: 600 .72rem 'Noto Sans TC', sans-serif; color: var(--ink3); margin-right: 6px; letter-spacing: .06em; }
+    .ft-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 
-    /* ===== QUEUE LIST ===== */
-    .queue-list { display: flex; flex-direction: column; gap: 6px; }
-    .queue-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 13px; background: var(--bg-card2);
-      border-radius: var(--radius-s); border: 1px solid var(--border);
-    }
-    .queue-item.next-up { border-color: rgba(139,92,246,.4); background: rgba(139,92,246,.07); }
-    .rank-badge {
-      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-      background: var(--bg-input); display: flex; align-items: center;
-      justify-content: center; font-size: .73rem; font-weight: 800; color: var(--text3);
-    }
-    .rank-badge.top { background: var(--primary); color: #fff; }
-    .q-name { flex: 1; font-weight: 700; font-size: .9rem; }
-    .q-meta { display: flex; align-items: center; gap: 7px; }
-    .games-pill {
-      background: var(--bg-input); color: var(--text2);
-      padding: 3px 9px; border-radius: 20px; font-size: .72rem; font-weight: 700;
-    }
+    /* ---- 分頁 ---- */
+    .tabs { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+    .tab { padding: 10px 2px; margin-right: 22px; font-weight: 700; font-size: .9rem; color: var(--ink3); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: var(--ink); border-bottom-color: var(--green); }
 
-    /* ===== LEADERBOARD ===== */
-    .lb-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 13px; border-radius: var(--radius-s);
-      border: 1px solid var(--border); margin-bottom: 6px; background: var(--bg-card2);
-    }
-    .lb-item.on-court { background: rgba(52,211,153,.06); border-color: rgba(52,211,153,.22); }
-    .lb-rank { width: 28px; text-align: center; font-size: .85rem; font-weight: 800; color: var(--text3); }
-    .lb-name { flex: 1; font-weight: 700; font-size: .9rem; }
-    .lb-status-badge { font-size: .65rem; font-weight: 800; padding: 3px 8px; border-radius: 20px; }
-    .ls-on  { background: rgba(52,211,153,.18); color: var(--success); }
-    .ls-off { background: rgba(148,163,184,.1);  color: var(--text2); }
-    .lb-games { font-size: .95rem; font-weight: 900; color: var(--primary-h); min-width: 34px; text-align: right; }
+    /* ---- 列表 ---- */
+    .rows { border-top: 1px solid var(--line); }
+    .row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding: 9px 0 9px 10px; border-bottom: 1px solid var(--line); position: relative; }
+    .row.next { background: var(--green-soft); box-shadow: inset 3px 0 0 var(--green); }
+    .row.me { background: var(--call-soft); box-shadow: inset 3px 0 0 var(--call); }
+    .rk { font-size: 1.35rem; font-weight: 600; color: var(--ink3); text-align: left; line-height: 1; }
+    .row.next .rk { color: var(--green); }
+    .nm { font-weight: 700; font-size: .95rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+    .gm { font-size: 1.05rem; color: var(--ink2); font-weight: 600; min-width: 40px; text-align: right; }
+    .gm small { font: 500 .7rem 'Noto Sans TC', sans-serif; color: var(--ink3); margin-left: 2px; }
+    .ra { display: flex; align-items: center; gap: 6px; }
+    .tag { font-size: .68rem; font-weight: 700; padding: 2px 6px; border: 1px solid currentColor; border-radius: 3px; white-space: nowrap; letter-spacing: .04em; }
+    .tag-call { color: var(--call); } .tag-mute { color: var(--ink3); } .tag-ok { color: var(--green); }
+    .ibtn { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: var(--r); background: transparent; color: var(--ink3); cursor: pointer; padding: 0; }
+    .ibtn:hover { border-color: var(--line); color: var(--ink); }
+    .ibtn.del:hover { border-color: var(--red); color: var(--red); }
+    .mini { font: 700 .74rem inherit; font-family: inherit; padding: 5px 9px; border: 1px solid var(--line); border-radius: var(--r); background: transparent; color: var(--ink2); cursor: pointer; }
+    .mini:hover { border-color: var(--ink); color: var(--ink); }
+    .hint { font-size: .76rem; color: var(--ink3); margin-top: 10px; }
+    .empty { padding: 28px 0; text-align: center; color: var(--ink3); font-size: .9rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .bar-wrap { grid-column: 2 / 4; height: 5px; background: var(--line); border-radius: 3px; margin-top: -2px; }
+    .bar { height: 100%; background: var(--green); border-radius: 3px; }
+    .bar.rest { background: var(--ink3); }
+    .block { margin-bottom: 22px; }
 
-    /* ===== REMOVE BUTTON ===== */
-    .rm-btn {
-      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-      background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.25);
-      color: var(--danger); cursor: pointer; display: flex; align-items: center;
-      justify-content: center; font-size: .75rem; transition: all .18s;
-    }
-    .rm-btn:hover { background: rgba(248,113,113,.22); }
-
-    /* ===== INPUT ===== */
-    .inp {
-      background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: var(--radius-s); padding: 10px 14px;
-      color: var(--text); font-size: .95rem; font-family: inherit;
-      outline: none; transition: border-color .18s;
-    }
-    .inp:focus  { border-color: var(--primary); }
-    .inp::placeholder { color: var(--text3); }
+    /* ---- 表單與卡片 ---- */
+    .inp { width: 100%; height: 42px; padding: 0 12px; background: var(--card); border: 1.5px solid var(--line); border-radius: var(--r); color: var(--ink); font: 500 1rem inherit; font-family: inherit; outline: none; }
+    .inp:focus { border-color: var(--ink); }
+    .inp::placeholder { color: var(--ink3); }
     .inp-row { display: flex; gap: 8px; }
-    .inp-row .inp { flex: 1; }
+    .panel { background: var(--card); border: 1.5px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .panel-t { font-size: .74rem; font-weight: 700; letter-spacing: .12em; color: var(--ink2); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .qr { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    #qrcode { background: #fff; padding: 10px; border: 1px solid var(--line); }
+    .qr-url { font: .7rem ui-monospace, Consolas, monospace; color: var(--ink3); word-break: break-all; text-align: center; }
 
-    /* ===== CARD ===== */
-    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
-    .card-title { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--text3); margin-bottom: 12px; }
+    .sheet { width: 100%; max-width: 380px; background: var(--card); border: 1.5px solid var(--ink); border-radius: 8px; padding: 28px 24px; }
+    .sheet .mark { margin-bottom: 18px; }
+    .sheet h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+    .sheet p { font-size: .88rem; color: var(--ink2); margin-bottom: 18px; line-height: 1.7; }
+    .sheet .inp { height: 48px; font-size: 1.05rem; margin-bottom: 12px; }
+    .sheet .note { margin: 16px 0 0; font-size: .76rem; color: var(--ink3); }
+    .roomline { font: 600 .76rem ui-monospace, Consolas, monospace; color: var(--ink2); margin-bottom: 14px; }
 
-    /* ===== QR ===== */
-    .qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-    #qrcode { background: #fff; padding: 11px; border-radius: 10px; }
-    .qr-url { font-size: .72rem; color: var(--text3); text-align: center; word-break: break-all; font-family: monospace; }
-    .qr-note { font-size: .75rem; color: var(--text3); text-align: center; line-height: 1.6; }
+    /* ---- 動作列 ---- */
+    .actionbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: var(--paper); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+    .actionbar-in { max-width: 720px; margin: 0 auto; display: flex; gap: 10px; }
 
-    /* ===== ACTION BAR ===== */
-    .action-bar {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-      background: var(--bar-bg); backdrop-filter: blur(24px);
-      border-top: 1px solid var(--border); padding: 10px 14px;
-    }
-    .action-bar-inner { max-width: 760px; margin: 0 auto; display: flex; gap: 9px; }
-
-    /* ===== MODAL OVERLAY ===== */
-    .overlay {
-      position: fixed; inset: 0; z-index: 200; display: none;
-      align-items: center; justify-content: center; padding: 16px;
-      background: rgba(0,0,0,.72); backdrop-filter: blur(6px);
-    }
+    /* ---- 彈窗 ---- */
+    .overlay { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(16,20,18,.55); }
     .overlay.open { display: flex; }
-    .modal {
-      background: var(--bg-card); border: 1px solid rgba(255,255,255,.1);
-      border-radius: var(--radius); padding: 24px; width: 100%; max-width: 400px;
-      box-shadow: var(--shadow);
-    }
-    .modal-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 20px; }
-    .form-group { margin-bottom: 16px; }
-    .form-lbl { display: block; font-size: .78rem; color: var(--text2); margin-bottom: 7px; font-weight: 700; }
-    .num-inp {
-      width: 80px; background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: var(--radius-s); padding: 10px; color: var(--text);
-      font-size: 1.1rem; font-weight: 800; text-align: center; font-family: inherit; outline: none;
-    }
-    .num-inp:focus { border-color: var(--primary); }
+    .modal { background: var(--card); border: 1.5px solid var(--ink); border-radius: 8px; padding: 22px; width: 100%; max-width: 420px; max-height: 92vh; overflow-y: auto; }
+    .m-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 14px; }
+    .m-text { font-size: .88rem; color: var(--ink2); line-height: 1.7; white-space: pre-line; margin-bottom: 18px; }
+    .m-btns { display: flex; gap: 10px; margin-top: 18px; }
+    .m-btns .btn { flex: 1; }
+    .fld { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .fld label { font-weight: 600; font-size: .9rem; }
+    .fld input[type=number], .fld select { width: 110px; height: 36px; padding: 0 8px; background: var(--paper); border: 1.5px solid var(--line); border-radius: var(--r); color: var(--ink); font: 600 .95rem inherit; font-family: inherit; text-align: center; }
+    .fld input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--green); }
+    .danger-zone { margin-top: 16px; }
+    .danger-zone .d { padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .danger-zone .d p { font-size: .76rem; color: var(--ink3); margin: 2px 0 8px; line-height: 1.6; }
+    .danger-zone .d b { font-size: .88rem; color: var(--red); }
+    .picks { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; min-height: 44px; }
+    .pick { padding: 8px 12px; border: 1.5px solid var(--line); border-radius: var(--r); cursor: pointer; font-weight: 700; font-size: .9rem; user-select: none; display: flex; align-items: baseline; gap: 6px; }
+    .pick small { color: var(--ink3); font-weight: 600; font-size: .72rem; }
+    .pick.sel { border-color: var(--green); background: var(--green-soft); }
+    .pick.maxed { opacity: .35; cursor: not-allowed; }
+    .pickcount { font-size: .8rem; color: var(--ink2); margin-bottom: 14px; }
 
-    /* ===== CONFIRM MODAL ===== */
-    .confirm-title { font-size: 1rem; font-weight: 800; margin-bottom: 8px; }
-    .confirm-text  { font-size: .85rem; color: var(--text2); margin-bottom: 20px; line-height: 1.7; white-space: pre-line; }
-    .confirm-btns  { display: flex; gap: 10px; }
-    .confirm-btns .btn { flex: 1; }
+    /* ---- 提示 ---- */
+    .toast { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 500; background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: var(--r); font-size: .86rem; font-weight: 600; max-width: calc(100vw - 32px); box-shadow: inset 4px 0 0 var(--green); padding-left: 20px; }
+    .toast.err { box-shadow: inset 4px 0 0 var(--red); }
+    .toast.info { box-shadow: inset 4px 0 0 var(--call); }
+    .offline { position: fixed; top: 0; left: 0; right: 0; z-index: 900; background: var(--red); color: #fff; font-size: .8rem; font-weight: 700; text-align: center; padding: 6px; }
+    #loading { position: fixed; inset: 0; z-index: 999; background: var(--paper); display: flex; align-items: center; justify-content: center; color: var(--ink3); font-weight: 600; letter-spacing: .2em; }
 
-    /* ===== JOIN VIEW ===== */
-    #join-view {
-      min-height: 100vh; display: flex;
-      flex-direction: column; align-items: center; justify-content: center; padding: 24px;
-    }
-    .join-card {
-      width: 100%; max-width: 380px;
-      background: var(--bg-card); border: 1px solid rgba(255,255,255,.1);
-      border-radius: var(--radius); padding: 36px 24px; text-align: center;
-      box-shadow: var(--shadow);
-    }
-    .join-icon    { font-size: 3.5rem; margin-bottom: 14px; }
-    .join-title   { font-size: 1.5rem; font-weight: 900; margin-bottom: 8px; }
-    .join-sub     { font-size: .9rem; color: var(--text2); margin-bottom: 26px; line-height: 1.6; }
-    .join-inp {
-      width: 100%; background: var(--bg-input); border: 2px solid var(--border);
-      border-radius: var(--radius-s); padding: 15px 16px;
-      color: var(--text); font-size: 1.15rem; font-family: inherit;
-      outline: none; text-align: center; margin-bottom: 14px;
-      transition: border-color .18s;
-    }
-    .join-inp:focus { border-color: var(--primary); }
-    .join-inp::placeholder { color: var(--text3); }
-    .join-success {
-      display: none; padding: 14px 20px; margin-top: 14px;
-      background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.3);
-      border-radius: var(--radius-s); color: var(--success); font-weight: 700; font-size: .9rem;
-      line-height: 1.6;
-    }
-    .join-note { margin-top: 18px; font-size: .74rem; color: var(--text3); line-height: 1.8; }
-
-    /* ===== ROOM VIEW ===== */
-    #room-view {
-      min-height: 100vh; display: flex;
-      flex-direction: column; align-items: center; justify-content: center; padding: 24px;
-    }
-    .room-badge {
-      font-size: .7rem; font-weight: 800; letter-spacing: .08em;
-      color: var(--primary-h); background: rgba(139,92,246,.12);
-      border: 1px solid rgba(139,92,246,.25); border-radius: 20px;
-      padding: 3px 10px; margin-bottom: 10px; display: inline-block;
-    }
-
-    /* ===== NOTIFICATION ===== */
-    .notif {
-      position: fixed; top: 62px; left: 50%; transform: translateX(-50%);
-      background: var(--bg-card2); border: 1px solid var(--border);
-      border-radius: var(--radius-s); padding: 10px 20px;
-      font-size: .84rem; font-weight: 700; z-index: 500;
-      white-space: nowrap; box-shadow: var(--shadow);
-      animation: fadeInDown .25s ease-out;
-    }
-    .notif.ok  { border-color: rgba(52,211,153,.5); color: var(--success); }
-    .notif.err { border-color: rgba(248,113,113,.5); color: var(--danger); }
-    .notif.info { border-color: rgba(251,191,36,.5); color: var(--warning); }
-
-    /* ===== EMPTY STATE ===== */
-    .empty { text-align: center; padding: 28px 16px; color: var(--text3); }
-    .empty-icon { font-size: 2.2rem; margin-bottom: 9px; }
-    .empty-txt  { font-size: .85rem; line-height: 1.6; }
-
-    /* ===== SCROLLABLE ===== */
-    .scrollable { max-height: 320px; overflow-y: auto; }
-    .scrollable::-webkit-scrollbar { width: 3px; }
-    .scrollable::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    /* ===== NEXT ROUND HINT ===== */
-    .hint-text { font-size: .74rem; color: var(--text3); text-align: center; margin-top: 7px; }
-
-    /* ===== ANIMATIONS ===== */
-    @keyframes fadeInDown {
-      from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
-      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .fade-in { animation: fadeIn .22s ease-out; }
-    .spin { animation: spin .9s linear infinite; display: inline-block; }
-
-    /* ===== ASSIGN MODAL ===== */
-    .player-pick-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; min-height: 48px; }
-    .p-toggle {
-      display: flex; align-items: center; gap: 6px;
-      padding: 7px 12px; border-radius: var(--radius-s);
-      border: 2px solid var(--border); cursor: pointer;
-      background: var(--bg-input); transition: all .18s; user-select: none;
-    }
-    .p-toggle.sel  { border-color: var(--primary); background: rgba(139,92,246,.18); }
-    .p-toggle.maxed { opacity: .38; cursor: not-allowed; }
-    .p-toggle-name { font-weight: 700; font-size: .85rem; }
-    .p-toggle-meta { font-size: .7rem; color: var(--text3); }
-    .assign-count  { font-size: .8rem; color: var(--text2); margin-bottom: 16px; }
-
-    /* ===== LOADING OVERLAY ===== */
-    #loading-overlay {
-      position: fixed; inset: 0; z-index: 999;
-      background: var(--bg);
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-    }
-    #loading-overlay .spin { font-size: 2.8rem; }
-    #loading-overlay p { color: var(--text2); font-size: .9rem; font-weight: 600; }
-
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 420px) {
-      .stats-bar .stat-val { font-size: 1.5rem; }
-      .btn-lg { padding: 13px 20px; font-size: .92rem; }
-    }
+    /* ---- 玩家看板 ---- */
+    #player-board { width: 100%; max-width: 480px; display: none; }
+    .status { border: 2px solid var(--ink); border-radius: 8px; padding: 22px 20px; margin-bottom: 20px; background: var(--card); }
+    .status .k { font-size: .76rem; letter-spacing: .14em; font-weight: 700; color: var(--ink2); }
+    .status .big { font-size: 5.5rem; font-weight: 700; line-height: 1; margin: 6px 0 4px; }
+    .status .big.t { font-size: 3rem; font-family: 'Noto Sans TC', sans-serif; font-weight: 900; }
+    .status .sub { font-size: .88rem; color: var(--ink2); line-height: 1.7; }
+    .status .acts { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .status.call { background: var(--call-soft); border-color: var(--call); animation: flash 1.4s ease-in-out infinite; }
+    .status.call .k { color: var(--call); }
+    .status.play { background: var(--green-soft); border-color: var(--green); }
+    .status.play .k { color: var(--green); }
+    .status.rest { border-style: dashed; }
+    @keyframes flash { 50% { background: var(--card); } }
+    .mini-court { margin-bottom: 8px; }
+    .mini-court .face { margin: 0; min-height: 110px; }
+    .mini-court .cap { font-size: .74rem; font-weight: 700; color: var(--ink2); margin: 0 0 4px; display: flex; justify-content: space-between; }
+    .mini-court .pl { font-size: .86rem; }
+    .mini-court .side { padding: 10px 14px; }
+    @media (max-width: 420px) { .score .v { font-size: 2.1rem; } .pl { font-size: .92rem; } .side { padding: 12px 14px; } }
   </style>
 </head>
 <body>
 
-<!-- ========================================================
-     LOADING OVERLAY
-======================================================== -->
-<div id="loading-overlay" style="display:none">
-  <span class="spin">🏸</span>
-  <p>連線中…</p>
-</div>
+<!-- 圖示：自繪單線 SVG（24×24，stroke 繼承文字色） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-logo" viewBox="0 0 24 24"><circle cx="12" cy="19" r="2.6"/><path d="M10 16.8 5 5.5M14 16.8l5-11.3M12 16.4V4.6M5 5.5c4.6-2.2 9.4-2.2 14 0"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/></symbol>
+    <symbol id="i-door" viewBox="0 0 24 24"><path d="M10 4H5v16h5"/><path d="m14 8 4 4-4 4M18 12H9"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-4-5 4z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5M16 6a3 3 0 0 1 0 6M18 14c2 .6 3 2.2 3 5"/></symbol>
+  </defs>
+</svg>
 
-<!-- ========================================================
-     ROOM VIEW  (no ?room= param)
-======================================================== -->
-<div id="room-view" class="view">
-  <div class="join-card">
-    <div class="join-icon">🏸</div>
-    <div class="join-title">羽球輪轉系統</div>
-    <div class="join-sub">輸入房間代碼進入，或建立新房間</div>
-    <input id="room-inp" class="join-inp" type="text" maxlength="30"
-           placeholder="房間代碼（例：jacko-wed）" autocomplete="off"
-           onkeydown="if(event.key==='Enter')enterRoom()">
-    <button class="btn btn-gradient btn-full btn-lg" onclick="enterRoom()">進入 / 建立房間 →</button>
-    <div class="join-note">
-      ✅ 各房間資料完全獨立，互不干擾<br>
-      ✅ 跨裝置即時同步（Firebase 雲端）<br>
-      💡 第一次輸入房間名稱會自動建立
-    </div>
+<div id="loading" style="display:none">連線中</div>
+<div id="offline-bar" class="offline" style="display:none">與雲端斷線中，操作暫時無法送出（恢復連線後會自動同步）</div>
+
+<!-- 房間選擇 -->
+<div id="room-view" class="view center">
+  <div class="sheet">
+    <div class="mark"><svg class="i i-lg"><use href="#i-logo"/></svg>羽球輪轉</div>
+    <h1>進入房間</h1>
+    <p>輸入房間代碼進入；代碼不存在時可選擇建立新房間。</p>
+    <input id="room-inp" class="inp" type="text" maxlength="30" placeholder="房間代碼，例如 jacko-wed" autocomplete="off">
+    <button class="btn btn-primary btn-lg btn-block" data-act="enter-room">進入</button>
+    <div class="note">各房間資料互相獨立，多裝置即時同步。</div>
   </div>
 </div>
 
-<!-- ========================================================
-     JOIN VIEW  (?join=1&room=xxx)
-======================================================== -->
-<div id="join-view" class="view">
-  <div class="join-card">
-    <div class="join-icon">🏸</div>
-    <div class="join-title">加入羽球場</div>
-    <div id="join-room-label" class="room-badge" style="margin-bottom:14px"></div>
-    <div class="join-sub">輸入你的名字，即可加入等待隊列</div>
-    <input id="join-inp" class="join-inp" type="text" maxlength="20"
-           placeholder="你的名字…" autocomplete="off"
-           onkeydown="if(event.key==='Enter')doJoin()">
-    <button class="btn btn-gradient btn-full btn-lg" onclick="doJoin()">加入隊列 →</button>
-    <div id="join-ok" class="join-success">
-      ✅ 已成功加入等待隊列！<br>
-      <span style="font-weight:400;font-size:.82rem">請稍候，管理員安排上場後會輪到你</span><br>
-      <span id="join-ok-room" style="font-size:.72rem;opacity:.7"></span>
-    </div>
-    <div class="join-note">
-      加入後請把手機交給下一位<br>
-      或等待管理員螢幕顯示你的名字
-    </div>
+<!-- 房間不存在 -->
+<div id="missing-view" class="view center">
+  <div class="sheet">
+    <div class="mark"><svg class="i i-lg"><use href="#i-logo"/></svg>羽球輪轉</div>
+    <h1 id="missing-title">找不到房間</h1>
+    <p id="missing-sub"></p>
+    <button class="btn btn-primary btn-lg btn-block" id="missing-create" data-act="create-room">建立此房間</button>
+    <button class="btn btn-quiet btn-block" style="margin-top:10px" data-act="go-home">回房間選擇</button>
   </div>
 </div>
 
-<!-- ========================================================
-     ADMIN VIEW  (?room=xxx)
-======================================================== -->
+<!-- 玩家端 -->
+<div id="join-view" class="view center">
+  <div class="sheet" id="join-form">
+    <div class="mark"><svg class="i i-lg"><use href="#i-logo"/></svg>羽球輪轉</div>
+    <h1>加入球局</h1>
+    <div id="join-room-label" class="roomline"></div>
+    <p>輸入名字加入等待隊列。加入後本頁會即時顯示你的順位，輪到你時會提示並震動。</p>
+    <input id="join-inp" class="inp" type="text" maxlength="20" placeholder="你的名字" autocomplete="off">
+    <button class="btn btn-primary btn-lg btn-block" id="join-btn" data-act="do-join">加入隊列</button>
+  </div>
+  <div id="player-board"></div>
+</div>
+
+<!-- 管理員 -->
 <div id="admin-view" class="view">
-
-  <!-- Header -->
-  <header class="header">
-    <div class="header-inner">
-      <div class="header-logo">
-        <span>🏸</span>羽球輪轉
-        <span id="room-label" class="room-pill"></span>
-      </div>
-      <div class="header-actions">
-        <button class="btn btn-ghost btn-sm" onclick="copyInviteLink()" title="複製邀請連結">🔗</button>
-        <button id="theme-btn" class="btn btn-ghost btn-sm" onclick="toggleTheme()" title="切換明暗主題">🌙</button>
-        <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙️ 設定</button>
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="mark"><svg class="i i-lg"><use href="#i-logo"/></svg>羽球輪轉<span id="room-label" class="roomtag"></span></div>
+      <div class="tools">
+        <button class="btn btn-quiet btn-sq" data-act="copy-link" title="複製邀請連結"><svg class="i"><use href="#i-link"/></svg></button>
+        <button id="theme-btn" class="btn btn-quiet btn-sq" data-act="toggle-theme" title="切換明暗"></button>
+        <button class="btn btn-quiet btn-sq" data-act="open-settings" title="設定"><svg class="i"><use href="#i-sliders"/></svg></button>
       </div>
     </div>
   </header>
 
-  <div class="container">
-
-    <!-- Stats -->
-    <div class="stats-bar">
-      <div class="stat-box"><div class="stat-val" id="s-playing">0</div><div class="stat-lbl">在場</div></div>
-      <div class="stat-box"><div class="stat-val" id="s-waiting">0</div><div class="stat-lbl">等待</div></div>
-      <div class="stat-box"><div class="stat-val" id="s-total">0</div> <div class="stat-lbl">總人數</div></div>
+  <div class="wrap">
+    <div class="score">
+      <div><div class="v num" id="s-playing">0</div><div class="k">在場</div></div>
+      <div><div class="v num" id="s-waiting">0</div><div class="k">等待</div></div>
+      <div><div class="v num" id="s-total">0</div><div class="k">總人數</div></div>
     </div>
 
-    <!-- Courts -->
-    <div class="section">
-      <div class="section-hd">
-        <div class="section-title">🏟 場地</div>
-      </div>
-      <div id="courts"></div>
-    </div>
+    <div class="sec-h">場地</div>
+    <div id="courts" class="courts"></div>
 
-    <!-- Tabs -->
     <div class="tabs">
-      <div class="tab active" onclick="switchTab('queue',this)">等待隊列</div>
-      <div class="tab"        onclick="switchTab('rank', this)">次數排行</div>
-      <div class="tab"        onclick="switchTab('add',  this)">加入 / QR</div>
+      <div class="tab active" data-act="tab" data-id="queue">等待隊列</div>
+      <div class="tab" data-act="tab" data-id="rank">次數排行</div>
+      <div class="tab" data-act="tab" data-id="people">人員與邀請</div>
     </div>
 
-    <!-- Tab: Queue -->
     <div id="tab-queue">
-      <!-- 候補預排群組 -->
-      <div id="reserves-section" style="margin-bottom:12px;display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-          <div class="section-title">📋 候補預排群組</div>
-          <button class="btn btn-sm btn-ghost" onclick="openReserve()">＋ 新增</button>
-        </div>
-        <div id="reserves-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div id="bookings-section" class="block" style="display:none">
+        <div class="sec-h">預約名單</div>
+        <div id="bookings-list" class="rows"></div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
-        <div class="section-title">🪑 等待隊列</div>
-        <button class="btn btn-sm btn-ghost" onclick="openReserve()">📋 新增候補預排</button>
+      <div class="sec-h">排隊中
+        <button class="btn btn-quiet btn-sm" data-act="open-book" data-cid="0"><svg class="i"><use href="#i-bookmark"/></svg>新增預約</button>
       </div>
       <div id="queue-list"></div>
     </div>
 
-    <!-- Tab: Rank -->
-    <div id="tab-rank" style="display:none">
-      <div id="rank-list" class="scrollable"></div>
-    </div>
+    <div id="tab-rank" style="display:none"><div id="rank-list"></div></div>
 
-    <!-- Tab: Add / QR -->
-    <div id="tab-add" style="display:none">
-      <div class="card" style="margin-bottom:12px">
-        <div class="card-title">👤 手動加入玩家</div>
+    <div id="tab-people" style="display:none">
+      <div class="panel">
+        <div class="panel-t">手動加入</div>
         <div class="inp-row">
-          <input id="manual-inp" class="inp" type="text" placeholder="輸入名字…" maxlength="20"
-                 autocomplete="off" onkeydown="if(event.key==='Enter')manualAdd()">
-          <button class="btn btn-primary" onclick="manualAdd()">加入</button>
+          <input id="manual-inp" class="inp" type="text" placeholder="輸入名字" maxlength="20" autocomplete="off">
+          <button class="btn btn-primary" data-act="manual-add"><svg class="i"><use href="#i-plus"/></svg>加入</button>
         </div>
       </div>
-      <!-- 測試工具 -->
-      <div class="card" style="margin-bottom:12px;border-color:rgba(251,191,36,.3)">
-        <div class="card-title" style="color:var(--warning)">🧪 測試工具（開發用）</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-          <button class="btn btn-sm" style="background:rgba(251,191,36,.15);color:var(--warning);border:1px solid rgba(251,191,36,.3)" onclick="simLoad(16)">填入 16 位測試玩家</button>
-          <button class="btn btn-sm" style="background:rgba(251,191,36,.15);color:var(--warning);border:1px solid rgba(251,191,36,.3)" onclick="simLoad(8)">填入 8 位</button>
-          <button class="btn btn-sm" style="background:rgba(139,92,246,.15);color:var(--primary-h);border:1px solid rgba(139,92,246,.3)" onclick="simRandomGames()">🎲 隨機分配已打次數</button>
-          <button class="btn btn-sm btn-danger" onclick="simClear()">🗑 清除所有玩家</button>
-        </div>
-        <div style="font-size:.72rem;color:var(--text3);line-height:1.7">
-          「填入測試玩家」若已有同名則跳過。<br>
-          「隨機次數」模擬打到一半的狀態（0–4 局）。
+      <div id="dev-card" class="panel" style="display:none">
+        <div class="panel-t">測試工具（網址加 dev=1）</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-quiet btn-sm" data-act="dev-fill" data-id="16">填入 16 位</button>
+          <button class="btn btn-quiet btn-sm" data-act="dev-fill" data-id="8">填入 8 位</button>
         </div>
       </div>
-
-      <!-- 玩家管理清單 -->
-      <div class="card" style="margin-bottom:12px">
-        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span>👥 玩家清單（點 ✕ 可移除）</span>
-          <span id="manage-count" style="font-size:.75rem;color:var(--text3);font-weight:600;text-transform:none;letter-spacing:0"></span>
-        </div>
-        <div id="manage-list" style="display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto"></div>
+      <div class="panel">
+        <div class="panel-t"><span>人員清單</span><span id="manage-count" style="letter-spacing:0;font-weight:600"></span></div>
+        <div id="manage-list" class="rows" style="max-height:340px;overflow-y:auto"></div>
       </div>
-
-      <div class="card">
-        <div class="card-title">📱 QR Code 掃碼加入</div>
-        <div class="qr-wrap">
+      <div class="panel">
+        <div class="panel-t">掃碼加入</div>
+        <div class="qr">
           <div id="qrcode"></div>
           <div class="qr-url" id="qr-url"></div>
-          <div style="display:flex;gap:8px;margin-top:4px">
-            <button class="btn btn-ghost btn-sm btn-full" onclick="copyInviteLink()">🔗 複製邀請連結</button>
-          </div>
-          <div class="qr-note">
-            掃碼後輸入名字即可即時加入隊列<br>
-            管理員畫面自動同步顯示
-          </div>
+          <button class="btn btn-quiet btn-sm" data-act="copy-link"><svg class="i"><use href="#i-link"/></svg>複製邀請連結</button>
         </div>
       </div>
     </div>
-
-  </div><!-- /container -->
-
-  <!-- Action Bar -->
-  <div class="action-bar">
-    <div class="action-bar-inner">
-      <button class="btn btn-gradient btn-lg" style="flex:1" onclick="startRound()">
-        ▶ 開始下一輪
-      </button>
-    </div>
   </div>
 
-</div><!-- /admin-view -->
-
-
-<!-- ========================================================
-     SETTINGS MODAL
-======================================================== -->
-<div id="settings-modal" class="overlay" onclick="if(event.target===this)closeSettings()">
-  <div class="modal">
-    <div class="modal-title">⚙️ 系統設定</div>
-    <div class="form-group">
-      <label class="form-lbl">場地數量</label>
-      <input id="set-courts"  class="num-inp" type="number" min="1" max="10" value="2">
-    </div>
-    <div class="form-group">
-      <label class="form-lbl">每場人數</label>
-      <input id="set-players" class="num-inp" type="number" min="2" max="6"  value="4">
-    </div>
-    <div class="form-group" style="padding-top:14px;border-top:1px solid var(--border)">
-      <label class="form-lbl">🔀 同次數排序</label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:4px">
-        <input type="checkbox" id="set-shuffle" style="width:16px;height:16px;accent-color:var(--primary)">
-        <span style="font-size:.82rem;color:var(--text2)">打亂同局數玩家順序（避免永遠與同一批人組隊）</span>
-      </label>
-    </div>
-    <div class="form-group" style="margin-top:8px; padding-top:16px; border-top:1px solid var(--border)">
-      <label class="form-lbl" style="color:var(--danger)">⚠ 重置資料</label>
-      <button class="btn btn-danger btn-sm" onclick="askReset()">清除所有玩家資料</button>
-    </div>
-    <div class="form-group" style="margin-top:8px; padding-top:16px; border-top:1px solid var(--border)">
-      <label class="form-lbl" style="color:var(--danger)">🗑 結束並刪除房間</label>
-      <div style="font-size:.75rem;color:var(--text3);margin-bottom:8px;line-height:1.6">
-        刪除 Firebase 上此房間的所有資料，回到房間選擇畫面。<br>適合每次球局結束後使用，資料不累積。
-      </div>
-      <button class="btn btn-sm" onclick="askCloseRoom()"
-        style="background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.35)">
-        🗑 結束房間「<span id="settings-room-label"></span>」
-      </button>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:20px">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeSettings()">取消</button>
-      <button class="btn btn-primary" style="flex:1" onclick="saveSettings()">儲存設定</button>
+  <div class="actionbar">
+    <div class="actionbar-in">
+      <button id="undo-btn" class="btn btn-quiet btn-lg" data-act="undo" style="display:none"><svg class="i"><use href="#i-undo"/></svg>撤銷</button>
+      <button class="btn btn-primary btn-lg" style="flex:1" data-act="start-round"><svg class="i"><use href="#i-bell"/></svg>叫下一批</button>
     </div>
   </div>
 </div>
 
-<!-- ========================================================
-     CONFIRM MODAL
-======================================================== -->
+<!-- 設定 -->
+<div id="settings-modal" class="overlay">
+  <div class="modal">
+    <div class="m-title">設定</div>
+    <div class="fld"><label for="set-courts">場地數量</label><input id="set-courts" type="number" min="1" max="10" value="2"></div>
+    <div class="fld"><label for="set-players">比賽型態</label>
+      <select id="set-players"><option value="4">雙打</option><option value="2">單打</option></select></div>
+    <div class="fld"><label for="set-autocall">場地結束後自動叫下一批</label><input id="set-autocall" type="checkbox"></div>
+    <div class="danger-zone">
+      <div class="d"><b>重置資料</b><p>清空所有玩家、場地與搭檔紀錄，保留場地與型態設定。</p>
+        <button class="btn btn-danger btn-sm" data-act="ask-reset">清除所有玩家</button></div>
+      <div class="d" style="border-bottom:0"><b>結束並刪除房間</b><p>永久刪除此房間所有資料；其他裝置會看到「房間已結束」，不會自動重建。</p>
+        <button class="btn btn-danger btn-sm" data-act="ask-close-room"><svg class="i"><use href="#i-trash"/></svg>結束房間 <span id="settings-room-label"></span></button></div>
+    </div>
+    <div class="m-btns">
+      <button class="btn btn-quiet" data-act="close-settings">取消</button>
+      <button class="btn btn-primary" data-act="save-settings">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 確認 -->
 <div id="confirm-modal" class="overlay">
   <div class="modal">
-    <div class="confirm-title" id="c-title">確認</div>
-    <div class="confirm-text"  id="c-text"></div>
-    <div class="confirm-btns">
-      <button class="btn btn-ghost"   onclick="closeConfirm()">取消</button>
-      <button class="btn btn-success" id="c-ok">確認</button>
+    <div class="m-title" id="c-title">確認</div>
+    <div class="m-text" id="c-text"></div>
+    <div class="m-btns" style="margin-top:0">
+      <button class="btn btn-quiet" data-act="close-confirm">取消</button>
+      <button class="btn btn-primary" id="c-ok" data-act="confirm-ok">確認</button>
     </div>
   </div>
 </div>
 
-<!-- ========================================================
-     ASSIGN MODAL（手動指定上場）
-======================================================== -->
-<div id="assign-modal" class="overlay" onclick="if(event.target===this)closeAssign()">
+<!-- 指定上場 / 預約 -->
+<div id="assign-modal" class="overlay">
   <div class="modal" style="max-width:480px">
-    <div class="modal-title" id="assign-title">👥 手動指定上場</div>
-    <div style="font-size:.8rem;color:var(--text2);margin-bottom:12px;white-space:pre-line" id="assign-hint"></div>
-    <div id="assign-grid" class="player-pick-grid"></div>
-    <div class="assign-count" id="assign-count"></div>
-    <div style="display:flex;gap:10px">
-      <button class="btn btn-ghost" style="flex:1" onclick="closeAssign()">取消</button>
-      <button class="btn btn-primary" style="flex:1" id="assign-ok" onclick="confirmAssign()" disabled>確認上場</button>
+    <div class="m-title" id="assign-title"></div>
+    <div class="m-text" id="assign-hint" style="margin-bottom:12px"></div>
+    <div id="assign-grid" class="picks"></div>
+    <div class="pickcount" id="assign-count"></div>
+    <div class="m-btns" style="margin-top:0">
+      <button class="btn btn-quiet" data-act="close-assign">取消</button>
+      <button class="btn btn-primary" id="assign-ok" data-act="confirm-assign" disabled>確認</button>
     </div>
   </div>
 </div>
 
-
-<!-- ========================================================
-     SCRIPTS
-======================================================== -->
 <script>
 'use strict';
 
-/* ─── Firebase ───────────────────────────────────────────── */
+/* ============================================================
+   ██ 核心邏輯（純函式，不碰 DOM / Firebase，可在 Node 直接測試）
+   設計重點：
+   1. 所有管理動作都是 reduce(state, action) → 新 state，
+      在 Firebase transaction 內執行，前提條件以「最新資料」重新驗證，
+      因此不會有「整包覆寫」與「過期物件」問題。
+   2. 順序用邏輯序號 seq，不使用任何裝置時鐘。
+   3. 資料不使用數字鍵（Firebase 會把 1,2,3 轉成陣列），場地鍵為 c1、c2…
+   ============================================================ */
+/* ==CORE-START== */
+const MAX_NAME = 20;                 // 名字最大長度
+const UNDOABLE = new Set(['START_ROUND', 'CALL', 'START', 'END', 'NOSHOW', 'CANCEL_CALL', 'ASSIGN', 'LEAVE']);
+
+const clone  = o => JSON.parse(JSON.stringify(o));
+// Firebase 讀回的陣列可能是物件，統一轉回陣列
+const asList = v => Array.isArray(v) ? v.filter(x => x != null)
+                   : (v && typeof v === 'object' ? Object.values(v) : []);
+const asMap  = v => (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+const pk     = (a, b) => a < b ? a + '|' + b : b + '|' + a;   // 兩人配對鍵（順序無關）
+
+function defaultState() {
+  return {
+    v: 2, seq: 0,
+    cfg: { courts: 2, ppc: 4, autoCall: true },
+    players: {},     // { [pid]: {id,name,games,base,status,readyAt} }
+    courts: {},      // { c1: {id,status,teams:[[pid..],[pid..]],gid,startedAt,calledAt} }
+    bookings: {},    // { b5: {id,ids:[pid..],courtId,seq} }  courtId=0 表示不指定場地
+    pairs: {},       // { 'a|b': {p:搭檔次數, o:對手次數, t:同場次數} }
+    prev: null, prevLabel: null, updatedAt: 0
+  };
+}
+
+/* 舊版（v1）資料轉換：players 陣列 → map，場地人員拆成兩隊 */
+function migrate(old) {
+  const s = defaultState();
+  s.cfg.courts = (old.cfg && old.cfg.courts) || 2;
+  s.cfg.ppc = (old.cfg && old.cfg.ppc === 2) ? 2 : 4;
+  asList(old.players).forEach((p, i) => {
+    if (!p || !p.id) return;
+    s.players[p.id] = { id: p.id, name: String(p.name || '?').slice(0, MAX_NAME), games: p.games || 0,
+                        base: 0, status: p.status === 'playing' ? 'playing' : 'waiting', readyAt: i + 1 };
+  });
+  s.seq = Object.keys(s.players).length;
+  asList(old.courts).forEach((c, i) => {
+    const ids = asList(c && c.players).filter(id => s.players[id]);
+    if (!ids.length) return;
+    const h = Math.ceil(ids.length / 2);
+    s.courts['c' + (i + 1)] = { id: i + 1, status: 'playing', teams: [ids.slice(0, h), ids.slice(h)].filter(t => t.length),
+                                gid: ++s.seq, startedAt: (c && c.ts) || 0 };
+  });
+  return s;
+}
+
+/* 正規化：補預設值、把 Firebase 回傳的物件還原成預期結構 */
+function norm(cur) {
+  if (!cur) return defaultState();
+  const s = cur.v === 2 ? clone(cur) : migrate(cur);
+  const d = defaultState();
+  s.v = 2;
+  s.cfg = Object.assign({}, d.cfg, s.cfg || {});
+  s.seq = s.seq || 0;
+  s.players = asMap(s.players); s.courts = asMap(s.courts);
+  s.bookings = asMap(s.bookings); s.pairs = asMap(s.pairs);
+  Object.values(s.players).forEach(p => { p.games = p.games || 0; p.base = p.base || 0; p.readyAt = p.readyAt || 0; });
+  Object.values(s.courts).forEach(c => {
+    c.id = Number(c.id);
+    c.teams = asList(c.teams).map(asList).filter(t => t.length);
+    if (!c.teams.length) c.status = 'idle';
+    c.status = c.status || 'idle';
+  });
+  Object.values(s.bookings).forEach(b => { b.ids = asList(b.ids); b.courtId = Number(b.courtId) || 0; });
+  s.prev = s.prev || null; s.prevLabel = s.prevLabel || null;
+  return s;
+}
+
+const courtIds   = c => c.teams.flat();
+const sortedCourts = s => Object.values(s.courts).sort((a, b) => a.id - b.id);
+const eff        = p => p.games + p.base;                       // 公平排序用的有效局數
+const prio       = (a, b) => eff(a) - eff(b) || a.readyAt - b.readyAt;
+const cnt        = (s, a, b, k) => (s.pairs[pk(a, b)] || {})[k] || 0;
+
+/* 補齊 / 縮減場地（只會移除尾端空閒場地） */
+function ensureCourts(s) {
+  for (let i = 1; i <= s.cfg.courts; i++)
+    if (!s.courts['c' + i]) s.courts['c' + i] = { id: i, status: 'idle', teams: [] };
+  Object.keys(s.courts).forEach(k => {
+    const c = s.courts[k];
+    if (c.id > s.cfg.courts && c.status === 'idle') delete s.courts[k];
+  });
+}
+
+/* 一致性修復：任何 action 之後都跑一次，保證不變式成立 */
+function tidy(s) {
+  ensureCourts(s);
+  const onCourt = new Map();
+  sortedCourts(s).forEach(c => {
+    // 場上名單剔除已不存在 / 已離場的人
+    c.teams = c.teams.map(t => t.filter(id => s.players[id] && s.players[id].status !== 'left'
+                                              && !onCourt.has(id) ))
+                     .filter(t => t.length);
+    if (!c.teams.length) { c.status = 'idle'; }
+    if (c.status === 'idle') { c.teams = []; delete c.gid; delete c.startedAt; delete c.calledAt; }
+    else courtIds(c).forEach(id => onCourt.set(id, c.status));
+  });
+  Object.values(s.players).forEach(p => {
+    if (onCourt.has(p.id)) p.status = onCourt.get(p.id);
+    else if (p.status === 'called' || p.status === 'playing') p.status = 'waiting';
+  });
+  // 預約：只保留仍在等待的人，每人最多屬於一個預約，不足 2 人即作廢
+  const seen = new Set();
+  Object.keys(s.bookings).forEach(k => {
+    const b = s.bookings[k];
+    b.ids = b.ids.filter(id => s.players[id] && s.players[id].status === 'waiting' && !seen.has(id));
+    b.ids.forEach(id => seen.add(id));
+    if (b.ids.length < 2) delete s.bookings[k];
+  });
+  return s;
+}
+
+/* 目前所有預約涵蓋的人（排隊演算法不會自動選到他們） */
+function reservedSet(s) {
+  const r = new Set();
+  Object.values(s.bookings).forEach(b => b.ids.forEach(id => r.add(id)));
+  return r;
+}
+const waitingList = (s, excl) => Object.values(s.players)
+  .filter(p => p.status === 'waiting' && !(excl && excl.has(p.id))).sort(prio);
+
+/* 目前在冊（非離場）玩家的最小有效局數：暫離回來的人以此為下限，避免回來後被不當加速 */
+function activeMin(s) {
+  const act = Object.values(s.players).filter(p => p.status !== 'left');
+  return act.length ? Math.min(...act.map(eff)) : 0;
+}
+/* 在冊玩家的平均有效局數（四捨五入）：晚到者以「平均球員」起跳，
+   不會因為局數 0 而連打（用最小值起跳實測仍會連打 3 場） */
+function activeMean(s) {
+  const act = Object.values(s.players).filter(p => p.status !== 'left');
+  return act.length ? Math.round(act.reduce((sum, p) => sum + eff(p), 0) / act.length) : 0;
+}
+
+function combos(arr, k) {
+  const out = [];
+  (function rec(st, cur) {
+    if (cur.length === k) { out.push(cur.slice()); return; }
+    for (let i = st; i < arr.length; i++) { cur.push(arr[i]); rec(i + 1, cur); cur.pop(); }
+  })(0, []);
+  return out;
+}
+
+/* 在一組人中找「搭檔 / 對手重複最少」的分隊 */
+function bestSplit(s, ids) {
+  const n = ids.length;
+  if (n === 1) return { teams: [[ids[0]]], cost: 0 };
+  const half = Math.floor(n / 2);
+  let best = null;
+  for (const A of combos(ids, half)) {
+    if (n % 2 === 0 && !A.includes(ids[0])) continue;      // 偶數人去除左右鏡像
+    const B = ids.filter(x => !A.includes(x));
+    let c = 0;
+    for (const t of [A, B])
+      for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) c += 100 * cnt(s, t[i], t[j], 'p');
+    for (const a of A) for (const b of B) c += 10 * cnt(s, a, b, 'o');
+    if (!best || c < best.cost) best = { teams: [A, B], cost: c };
+  }
+  return best;
+}
+
+/* 排人：局數較少者必上；同局數候選池內挑出「搭檔/對手/同場」重複最少的組合 */
+function pickGroup(s, need, excl) {
+  const q = waitingList(s, excl);
+  if (q.length < need) return null;
+  const edge = eff(q[need - 1]);
+  const must = q.filter(p => eff(p) < edge);
+  const pool = q.filter(p => eff(p) === edge);
+  const take = need - must.length;
+  const cand = pool.slice(0, take + 2);                    // 候選池只看等最久的前 take+2 人（調參：兼顧 FIFO 與搭檔多樣性）
+  let best = null;
+  for (const pick of combos(cand, take)) {
+    const ids = must.concat(pick).map(p => p.id);
+    const sp = bestSplit(s, ids);
+    let c = sp.cost;
+    for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) c += 3 * cnt(s, ids[i], ids[j], 't');
+    c += pick.reduce((sum, p) => sum + cand.indexOf(p), 0) * 10;    // 等待順序懲罰：讓多樣性不會壓過先來後到
+    if (!best || c < best.c) best = { c, ids, teams: sp.teams };
+  }
+  return { ids: best.ids, teams: best.teams };
+}
+
+/* 為空閒場地叫號：先吃預約（不足人數自動補滿），再走演算法。回傳 'booking' | 'auto' | false */
+function fillCourt(s, court, now) {
+  const ppc = s.cfg.ppc;
+  const bks = Object.values(s.bookings).filter(b => b.courtId === court.id || b.courtId === 0)
+    .sort((a, b) => (b.courtId === court.id) - (a.courtId === court.id) || a.seq - b.seq);
+  let ids = null, how = false, teams = null;
+  if (bks.length) {
+    const b = bks[0];
+    ids = b.ids.filter(id => s.players[id] && s.players[id].status === 'waiting');
+    delete s.bookings[Object.keys(s.bookings).find(k => s.bookings[k] === b)];
+    if (ids.length < ppc) {
+      const excl = reservedSet(s); ids.forEach(id => excl.add(id));
+      ids = ids.concat(waitingList(s, excl).slice(0, ppc - ids.length).map(p => p.id));
+    }
+    teams = bestSplit(s, ids).teams; how = 'booking';
+  } else {
+    const g = pickGroup(s, ppc, reservedSet(s));
+    if (!g) return false;
+    ids = g.ids; teams = g.teams; how = 'auto';
+  }
+  court.status = 'called'; court.teams = teams; court.gid = ++s.seq; court.calledAt = now; delete court.startedAt;
+  ids.forEach(id => { s.players[id].status = 'called'; });
+  return how;
+}
+
+/* 把某人從場地拿掉（離場 / 缺席共用）。 */
+function detach(s, pid) {
+  sortedCourts(s).forEach(c => {
+    if (!courtIds(c).includes(pid)) return;
+    const rest = courtIds(c).filter(id => id !== pid);
+    c.teams = rest.length ? bestSplit(s, rest).teams : [];
+  });
+}
+
+const cleanName = n => String(n == null ? '' : n).replace(/\s+/g, ' ').trim().slice(0, MAX_NAME);
+const findCourt = (s, id) => s.courts['c' + id];
+const nm = (s, id) => (s.players[id] ? s.players[id].name : '?');
+const DEV_NAMES = ['小明','小華','小美','阿強','阿志','阿偉','雅婷','淑芬','建國','志明','淑惠','大雄','靜香','胖虎','小夫','技安'];
+
+/* ─── Action handlers：回傳 {error} 或 {note,label,extra} ─── */
+const H = {
+  INIT() { return { note: '房間已建立' }; },
+
+  JOIN(s, a) {
+    const name = cleanName(a.name);
+    if (!name) return { error: '請輸入名字' };
+    if (!a.pid) return { error: '缺少玩家識別' };
+    const start = activeMean(s);                          // 晚到者起跳局數
+    let p = s.players[a.pid];
+    const same = Object.values(s.players).find(x => x.id !== a.pid && x.name.toLowerCase() === name.toLowerCase());
+    if (same) {
+      if (same.status === 'left') p = same;               // 離場者可用同名認領自己的紀錄
+      else return { error: '此名字已有人使用，請換一個' };
+    }
+    if (p) {
+      if (p.status === 'left') {
+        p.status = 'waiting'; p.readyAt = ++s.seq; p.base = Math.max(p.base, start - p.games);
+      }
+      p.name = name;
+      return { note: `${name} 已在名單中`, extra: { pid: p.id } };
+    }
+    s.players[a.pid] = { id: a.pid, name, games: 0, base: Math.max(0, start), status: 'waiting', readyAt: ++s.seq };
+    return { note: `${name} 已加入`, extra: { pid: a.pid } };
+  },
+
+  DEV_FILL(s, a) {
+    let added = 0;
+    for (const n of DEV_NAMES) {
+      if (added >= a.n) break;
+      if (Object.values(s.players).some(p => p.name === n)) continue;
+      const id = 'dev' + (++s.seq).toString(36);
+      s.players[id] = { id, name: n, games: 0, base: Math.max(0, activeMean(s)), status: 'waiting', readyAt: s.seq };
+      added++;
+    }
+    return { note: `已加入 ${added} 位測試玩家` };
+  },
+
+  SET_CFG(s, a) {
+    const courts = Math.min(10, Math.max(1, parseInt(a.courts, 10) || 2));
+    const ppc = a.ppc === 2 ? 2 : 4;
+    s.cfg = { courts, ppc, autoCall: !!a.autoCall };
+    return { note: '設定已儲存' };
+  },
+
+  RESET(s) {
+    s.players = {}; s.bookings = {}; s.pairs = {};
+    Object.values(s.courts).forEach(c => { c.status = 'idle'; c.teams = []; });
+    s.prev = null; s.prevLabel = null;
+    return { note: '資料已重置' };
+  },
+
+  REST(s, a) {
+    const p = s.players[a.pid];
+    if (!p) return { error: '找不到此玩家' };
+    if (a.on) {
+      if (p.status === 'resting') return { note: '已在暫離狀態' };
+      if (p.status !== 'waiting') return { error: '只有等待中的人可以暫離' };
+      p.status = 'resting';
+      return { note: `${p.name} 暫離（不會被叫號）` };
+    }
+    if (p.status !== 'resting') return { note: '已在隊列中' };
+    p.status = 'waiting'; p.readyAt = ++s.seq; p.base = Math.max(p.base, activeMin(s) - p.games);   // 回來排到同局數最後面
+    return { note: `${p.name} 回到隊列` };
+  },
+
+  LEAVE(s, a) {
+    const p = s.players[a.pid];
+    if (!p) return { error: '找不到此玩家' };
+    detach(s, p.id);
+    p.status = 'left';
+    return { note: `${p.name} 已離場`, label: `${p.name} 離場` };
+  },
+
+  DELETE(s, a) {
+    const p = s.players[a.pid];
+    if (!p) return { error: '找不到此玩家' };
+    if (p.status === 'called' || p.status === 'playing') return { error: '在場上的人請先讓他離場' };
+    delete s.players[a.pid];
+    return { note: '已刪除' };
+  },
+
+  CALL(s, a) {
+    const c = findCourt(s, a.courtId);
+    if (!c) return { error: '找不到場地' };
+    if (c.status !== 'idle') return { error: `場地 ${c.id} 不是空閒狀態` };
+    if (!fillCourt(s, c, a.now)) return { error: `等待人數不足（需 ${s.cfg.ppc} 人）` };
+    return { note: `場地 ${c.id} 已叫號`, label: `叫號場地 ${c.id}` };
+  },
+
+  START_ROUND(s, a) {
+    const idle = sortedCourts(s).filter(c => c.status === 'idle');
+    if (!idle.length) return { error: '所有場地都有人了' };
+    let n = 0;
+    idle.forEach(c => { if (fillCourt(s, c, a.now)) n++; });
+    if (!n) return { error: `等待人數不足（需 ${s.cfg.ppc} 人）` };
+    return { note: `已叫 ${n} 個場地`, label: `叫 ${n} 個場地` };
+  },
+
+  START(s, a) {
+    const c = findCourt(s, a.courtId);
+    if (!c || c.status !== 'called' || c.gid !== a.gid) return { error: '此場狀態已變更，請看最新畫面' };
+    c.status = 'playing'; c.startedAt = a.now;
+    return { note: `場地 ${c.id} 開打`, label: `場地 ${c.id} 開打` };
+  },
+
+  CANCEL_CALL(s, a) {
+    const c = findCourt(s, a.courtId);
+    if (!c || c.status !== 'called' || c.gid !== a.gid) return { error: '此場狀態已變更，請看最新畫面' };
+    c.status = 'idle'; c.teams = [];              // tidy 會把人放回等待，readyAt 不變，仍排在原位
+    return { note: `場地 ${c.id} 已取消叫號`, label: `取消叫號 ${c.id}` };
+  },
+
+  NOSHOW(s, a) {
+    const c = findCourt(s, a.courtId);
+    if (!c || c.status !== 'called' || c.gid !== a.gid) return { error: '此場狀態已變更，請看最新畫面' };
+    const p = s.players[a.pid];
+    if (!p || !courtIds(c).includes(a.pid)) return { error: '此人已不在該場' };
+    detach(s, a.pid);
+    p.status = 'resting';                                  // 缺席者轉暫離，回來後排到同局數最後
+    let ids = courtIds(c);
+    // 從等待隊列補一人（不動預約中的人）
+    const rep = waitingList(s, reservedSet(s)).filter(x => !ids.includes(x.id))[0];
+    if (rep) { ids = ids.concat(rep.id); rep.status = 'called'; }
+    c.teams = ids.length ? bestSplit(s, ids).teams : [];
+    if (ids.length < 2) { c.status = 'idle'; c.teams = []; }
+    return { note: rep ? `${p.name} 缺席，由 ${rep.name} 替補` : `${p.name} 缺席，無人可替補`, label: `${p.name} 缺席` };
+  },
+
+  END(s, a) {
+    const c = findCourt(s, a.courtId);
+    if (!c || c.status !== 'playing' || c.gid !== a.gid) return { error: '此場狀態已變更（可能已被其他裝置結束）' };
+    const t = c.teams, ids = courtIds(c);
+    const bump = (x, y, k) => { const key = pk(x, y); const r = s.pairs[key] || (s.pairs[key] = { p: 0, o: 0, t: 0 }); r[k]++; };
+    t.forEach(team => { for (let i = 0; i < team.length; i++) for (let j = i + 1; j < team.length; j++) bump(team[i], team[j], 'p'); });
+    if (t.length === 2) t[0].forEach(x => t[1].forEach(y => bump(x, y, 'o')));
+    for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) bump(ids[i], ids[j], 't');
+    const names = ids.map(id => nm(s, id)).join('、');
+    ids.forEach(id => { const p = s.players[id]; p.games++; p.status = 'waiting'; p.readyAt = ++s.seq; });
+    c.status = 'idle'; c.teams = [];
+    let tail = '';
+    if (s.cfg.autoCall) {
+      const how = fillCourt(s, c, a.now);
+      tail = how ? (how === 'booking' ? '，已依預約叫號' : '，已自動叫下一批') : '，等待人數不足';
+    }
+    return { note: `場地 ${c.id} 結束${tail}`, label: `結束場地 ${c.id}（${names}）` };
+  },
+
+  ASSIGN(s, a) {
+    const c = findCourt(s, a.courtId);
+    if (!c) return { error: '找不到場地' };
+    if (c.status !== 'idle') return { error: `場地 ${c.id} 已被使用` };
+    const ids = [...new Set(asList(a.ids))];
+    if (ids.length < 2 || ids.length > s.cfg.ppc) return { error: `需選 2–${s.cfg.ppc} 人` };
+    if (!ids.every(id => s.players[id] && s.players[id].status === 'waiting')) return { error: '有人已不在等待中，請重新選擇' };
+    c.status = 'playing'; c.teams = bestSplit(s, ids).teams; c.gid = ++s.seq; c.startedAt = a.now;
+    ids.forEach(id => { s.players[id].status = 'playing'; });
+    return { note: `場地 ${c.id} 已安排 ${ids.length} 人上場`, label: `指定上場 ${c.id}` };
+  },
+
+  BOOK(s, a) {
+    const ids = [...new Set(asList(a.ids))];
+    const courtId = Number(a.courtId) || 0;
+    if (courtId && !findCourt(s, courtId)) return { error: '找不到場地' };
+    if (ids.length < 2 || ids.length > s.cfg.ppc) return { error: `需選 2–${s.cfg.ppc} 人` };
+    if (!ids.every(id => s.players[id] && s.players[id].status === 'waiting')) return { error: '有人已不在等待中，請重新選擇' };
+    // 每個場地只有一筆預約；同一個人只屬於一筆預約
+    Object.keys(s.bookings).forEach(k => {
+      const b = s.bookings[k];
+      if (courtId && b.courtId === courtId) delete s.bookings[k];
+      else b.ids = b.ids.filter(id => !ids.includes(id));
+    });
+    const id = 'b' + (++s.seq);
+    s.bookings[id] = { id, ids, courtId, seq: s.seq };
+    return { note: `已預約：${ids.map(i => nm(s, i)).join('、')}` };
+  },
+
+  UNBOOK(s, a) {
+    if (!s.bookings[a.bid]) return { error: '預約已不存在' };
+    delete s.bookings[a.bid];
+    return { note: '預約已取消' };
+  },
+
+  UNDO(s) {
+    if (!s.prev) return { error: '沒有可撤銷的動作' };
+    const r = norm(JSON.parse(s.prev));
+    // 撤銷期間新加入的玩家要保留
+    Object.values(s.players).forEach(p => { if (!r.players[p.id]) r.players[p.id] = p; });
+    r.seq = Math.max(r.seq, s.seq);
+    r.cfg = s.cfg;
+    Object.keys(s).forEach(k => delete s[k]);
+    Object.assign(s, r, { prev: null, prevLabel: null });
+    return { note: '已撤銷上一個動作' };
+  }
+};
+
+/* reduce：複製 → 修復 → 執行 → 修復 → 記錄撤銷點 */
+function reduce(s0, a) {
+  const h = H[a.type];
+  if (!h) return { error: '未知的操作' };
+  const s = tidy(clone(s0));
+  const before = UNDOABLE.has(a.type) ? JSON.stringify(Object.assign({}, s, { prev: null, prevLabel: null })) : null;
+  const r = h(s, a) || {};
+  if (r.error) return r;
+  tidy(s);
+  if (before) { s.prev = before; s.prevLabel = r.label || a.type; }
+  s.updatedAt = a.now || 0;
+  return { state: s, note: r.note, extra: r.extra };
+}
+/* ==CORE-END== */
+
+/* ============================================================
+   ██ Firebase 與畫面
+   ============================================================ */
+// Firebase Web 設定（apiKey 設計上本來就是公開的；資料安全靠資料庫規則）
 const firebaseConfig = {
   apiKey: "AIzaSyBIab0AToCpXSptch71kKSsOhKNvK4R3qw",
   authDomain: "badminton-queue-e8583.firebaseapp.com",
@@ -692,838 +878,516 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* ─── Constants ─────────────────────────────────────────── */
-const COURT_COLORS = ['#8b5cf6','#22d3ee','#fbbf24','#34d399','#f87171','#c084fc','#38bdf8'];
-
-/* ─── Room & Firebase refs ───────────────────────────────── */
-let roomId = null;
-let _fbRef = null;   // db.ref(`rooms/${roomId}`)
-
-/* ─── State ──────────────────────────────────────────────── */
-let S = defaultState();
-
-function defaultState() {
-  return { cfg: { courts: 2, ppc: 4, shuffle: false }, players: [], courts: [], reserves: [], _v: 0 };
-}
-
-// Firebase may serialize JS arrays as plain objects — restore them
-function fixState(s) {
-  if (!s) return defaultState();
-  const fix = v => Array.isArray(v) ? v : Object.values(v || {});
-  s.players  = fix(s.players);
-  s.courts   = fix(s.courts);
-  s.reserves = fix(s.reserves).map(r => fix(r));
-  s.courts.forEach(c => {
-    c.players = fix(c.players);
-    if (c.nextPlayers) c.nextPlayers = fix(c.nextPlayers);
-  });
-  if (!s.cfg) s.cfg = { courts: 2, ppc: 4, shuffle: false };
-  if (s.cfg.shuffle === undefined) s.cfg.shuffle = false;
-  return s;
-}
-
-function save() {
-  S._v = (S._v || 0) + 1;
-  if (_fbRef) _fbRef.set(JSON.parse(JSON.stringify(S)));
-}
-
-/* ─── URL detection ──────────────────────────────────────── */
 const P         = new URLSearchParams(location.search);
 const isJoin    = P.has('join');
+const isDev     = P.has('dev');
 const roomParam = P.get('room');
 
-/* ─── Utils ──────────────────────────────────────────────── */
-function uid()  { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
-function pad(n) { return String(n).padStart(2,'0'); }
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
-function sanitizeRoomId(s) {
-  return s.toLowerCase()
-    .replace(/[^a-z0-9\-\_]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 30);
-}
+let roomId = null, ref = null;
+let S = null;               // 目前房間狀態（null = 尚未載入或房間不存在）
+let ready = false;          // 是否已收到第一次資料（避免用空快取送出 transaction）
+let serverOffset = 0;       // 伺服器時間差，讓各裝置計時一致
+let myPid = null;           // 本機玩家識別（存在 localStorage，重新整理仍是同一人）
+let lastMyStatus = null;
 
-function showLoading(on) {
-  const el = document.getElementById('loading-overlay');
-  if (el) el.style.display = on ? 'flex' : 'none';
+const $    = id => document.getElementById(id);
+const pad  = n => String(n).padStart(2, '0');
+const now  = () => Date.now() + serverOffset;
+const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc  = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ESC_MAP[c]);   // 文字與屬性皆可用
+const ico  = (n, cls) => `<svg class="i ${cls || ''}"><use href="#i-${n}"/></svg>`;
+const newPid = () => 'p' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+function sanitizeRoomId(s) {
+  return s.toLowerCase().replace(/[^a-z0-9\-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
 }
 function show(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  const el = document.getElementById(id);
-  if (el) el.classList.add('active');
+  const el = $(id); if (el) el.classList.add('active');
 }
+function showLoading(on) { $('loading').style.display = on ? 'flex' : 'none'; }
 
-/* ─── Init ───────────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', () => {
-  applyTheme(localStorage.getItem('bq_theme') || 'dark');
-
-  // No room param → show room selection screen
-  if (!roomParam) {
-    show('room-view');
-    const inp = document.getElementById('room-inp');
-    if (inp) inp.focus();
-    return;
-  }
-
-  roomId = sanitizeRoomId(roomParam);
-  if (!roomId) { show('room-view'); return; }
-
-  _fbRef = db.ref(`rooms/${roomId}`);
-
-  if (isJoin) {
-    // ── Player join view ──
-    show('join-view');
-    const lbl = document.getElementById('join-room-label');
-    if (lbl) lbl.textContent = `房間：${roomId}`;
-    const inp = document.getElementById('join-inp');
-    if (inp) inp.focus();
-
-  } else {
-    // ── Admin view ──
-    show('admin-view');
-    const rl = document.getElementById('room-label');
-    if (rl) rl.textContent = roomId;
-
-    showLoading(true);
-
-    _fbRef.on('value', snap => {
-      const data   = snap.val();
-      const isNew  = !data;
-      S = fixState(data);
-      syncCourts();
-      if (isNew) save();  // initialise new room in Firebase
-      cleanState();
-      renderAll();
-      genQR();
-      showLoading(false);
-    });
-
-    setInterval(tickTimers, 1000);
-  }
+db.ref('.info/serverTimeOffset').on('value', s => { serverOffset = s.val() || 0; });
+// 斷線提示：載入初期 connected 會先是 false，延遲 3 秒再判斷避免誤報
+let _online = true;
+db.ref('.info/connected').on('value', s => {
+  _online = s.val() !== false;
+  if (_online) $('offline-bar').style.display = 'none';
+  else setTimeout(() => { if (!_online) $('offline-bar').style.display = 'block'; }, 3000);
 });
 
-/* ─── Room screen ────────────────────────────────────────── */
-function enterRoom() {
-  const inp = document.getElementById('room-inp');
-  const raw = inp ? inp.value.trim() : '';
-  if (!raw) {
-    if (inp) { inp.style.borderColor = 'var(--danger)'; setTimeout(() => inp.style.borderColor='', 2000); }
+/* ─── 送出動作：交給 transaction，在最新資料上重新驗證 ─── */
+function dispatch(action, cb) {
+  if (!ready || !ref) { notify('尚未連線，請稍後再試', 'err'); return; }
+  action.now = now();
+  let err = null, res = null;
+  ref.transaction(cur => {
+    err = null; res = null;
+    if (cur === null && action.type !== 'INIT') { err = '找不到房間'; return; }   // 房間不存在 → 中止，不自動建立
+    const r = reduce(norm(cur), action);
+    if (r.error) { err = r.error; return; }                                        // 前提不成立 → 中止
+    res = r;
+    return JSON.parse(JSON.stringify(r.state));                                    // 去掉 undefined
+  }, (e, committed) => {
+    if (e) { notify('操作失敗，請重試', 'err'); return; }
+    if (!committed) { notify(err || '操作未完成，請重試', 'err'); return; }
+    if (res.note) notify(res.note, 'ok');
+    if (cb) cb(res);
+  }, false);
+}
+
+/* ─── 初始化 ─── */
+document.addEventListener('DOMContentLoaded', () => {
+  applyTheme(localStorage.getItem('bq_theme2') || 'light');
+  if (isDev) $('dev-card').style.display = 'block';
+
+  if (!roomParam || !(roomId = sanitizeRoomId(roomParam))) {
+    show('room-view'); $('room-inp').focus(); return;
+  }
+  ref = db.ref('rooms/' + roomId);
+  myPid = localStorage.getItem('bq_pid_' + roomId);
+
+  showLoading(true);
+  ref.on('value', snap => {
+    ready = true;
+    const raw = snap.val();
+    S = raw ? tidy(norm(raw)) : null;
+    showLoading(false);
+    render();
+  }, () => { showLoading(false); notify('讀取資料失敗', 'err'); });
+
+  setInterval(tickTimers, 1000);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target) return;
+  const fn = { 'room-inp': enterRoom, 'join-inp': doJoin, 'manual-inp': manualAdd }[e.target.id];
+  if (fn) fn();
+});
+
+function render() {
+  if (!S) {
+    show('missing-view');
+    $('missing-title').textContent = isJoin ? '找不到此房間' : '房間尚未建立或已結束';
+    $('missing-sub').textContent = `房間代碼：${roomId}`;
+    $('missing-create').style.display = isJoin ? 'none' : 'block';
     return;
   }
-  const rid = sanitizeRoomId(raw);
-  if (!rid) { notify('⚠ 只能包含英文字母、數字、連字符', 'err'); return; }
-  location.href = `${location.pathname}?room=${rid}`;
+  if (isJoin) { show('join-view'); renderJoin(); }
+  else        { show('admin-view'); renderAdmin(); }
 }
 
-/* ─── State helpers ──────────────────────────────────────── */
-function syncCourts() {
-  const n = S.cfg.courts;
-  while (S.courts.length < n)
-    S.courts.push({ id: S.courts.length + 1, players: [], ts: null });
-  while (S.courts.length > n && S.courts[S.courts.length - 1].players.length === 0)
-    S.courts.pop();
-  S.courts.forEach((c, i) => c.id = i + 1);
+/* ============================================================
+   球場圖：兩隊分站球網兩側
+   ============================================================ */
+const nameOf = id => S.players[id] ? S.players[id].name : '?';
+const bookingForCourt = cid => Object.values(S.bookings).find(b => b.courtId === cid);
+const LINES = '<i class="ln net"></i><i class="ln ss a"></i><i class="ln ss b"></i><i class="ln cl a"></i><i class="ln cl b"></i><i class="ln sd a"></i><i class="ln sd b"></i>';
+
+function courtFace(c, withNoShow) {
+  if (c.status === 'idle') return `<div class="face idle">${LINES}<div class="idle-txt">空閒</div></div>`;
+  const side = t => `<div class="side">${(t || []).map(id => `<div class="pl"><span class="pl-n">${esc(nameOf(id))}</span>${
+    withNoShow ? `<button class="pl-x" title="缺席，由下一位替補" data-act="noshow" data-cid="${c.id}" data-gid="${esc(c.gid)}" data-pid="${esc(id)}">${ico('x')}</button>` : ''}</div>`).join('')}</div>`;
+  return `<div class="face ${c.status}">${LINES}${side(c.teams[0])}${side(c.teams[1])}</div>`;
 }
+const STATE_TXT = { idle: '空閒', called: '叫號中', playing: '進行中' };
 
-function cleanState() {
-  const inCourt = new Set(S.courts.flatMap(c => c.players));
-  S.players.forEach(p => {
-    if (p.status === 'playing' && !inCourt.has(p.id)) p.status = 'waiting';
-    if (p.status === 'waiting' &&  inCourt.has(p.id)) p.status = 'playing';
-  });
-}
-
-/* ─── Players ────────────────────────────────────────────── */
-function addPlayer(name, silent = false) {
-  name = name.trim();
-  if (!name) return false;
-  if (S.players.find(p => p.name === name)) {
-    if (!silent) notify(`⚠ "${esc(name)}" 已在名單中`, 'err');
-    return false;
-  }
-  S.players.push({ id: uid(), name, joined: Date.now(), games: 0, status: 'waiting' });
-  return true;
-}
-
-function removePlayer(id) {
-  const p = S.players.find(x => x.id === id);
-  if (!p) return;
-  if (p.status === 'playing') {
-    confirm_(`移除在場玩家`, `${p.name} 目前正在場上，確定要移除嗎？\n（場地名單也會同步更新）`,
-      () => {
-        S.courts.forEach(c => { c.players = c.players.filter(x => x !== id); });
-        S.players = S.players.filter(x => x.id !== id);
-        save(); renderAll();
-      });
-  } else {
-    S.players = S.players.filter(x => x.id !== id);
-    save(); renderAll();
-  }
-}
-
-function manualAdd() {
-  const el = document.getElementById('manual-inp');
-  const n  = el.value.trim();
-  if (!n) return;
-  if (addPlayer(n)) { el.value = ''; save(); notify(`✅ ${n} 已加入！`, 'ok'); renderAll(); }
-}
-
-/* ─── Algorithm: sorted waiting ─────────────────────────── */
-function waitingByPriority() {
-  const list = S.players
-    .filter(p => p.status === 'waiting')
-    .sort((a, b) => a.games !== b.games ? a.games - b.games : a.joined - b.joined);
-  if (!S.cfg.shuffle) return list;
-  const out = [];
-  let i = 0;
-  while (i < list.length) {
-    let j = i;
-    while (j < list.length && list[j].games === list[i].games) j++;
-    const grp = list.slice(i, j);
-    for (let k = grp.length - 1; k > 0; k--) {
-      const r = Math.floor(Math.random() * (k + 1));
-      [grp[k], grp[r]] = [grp[r], grp[k]];
-    }
-    out.push(...grp); i = j;
-  }
-  return out;
-}
-
-/* ─── Rounds ─────────────────────────────────────────────── */
-function fillOneCourt(court) {
-  const ppc = S.cfg.ppc;
-
-  // 1. court-specific 預排
-  const nextValid = (court.nextPlayers || []).filter(
-    id => S.players.find(p => p.id === id && p.status === 'waiting'));
-  court.nextPlayers = null;
-  if (nextValid.length >= 2) {
-    nextValid.forEach(id => { const p = S.players.find(x => x.id === id); if (p) p.status = 'playing'; });
-    let finalIds = [...nextValid];
-    if (finalIds.length < ppc) {
-      const used   = new Set(finalIds);
-      const extras = waitingByPriority().filter(p => !used.has(p.id)).slice(0, ppc - finalIds.length);
-      extras.forEach(p => { p.status = 'playing'; finalIds.push(p.id); });
-    }
-    court.players = finalIds; court.ts = Date.now();
-    return 'next';
-  }
-
-  // 2. 浮動候補預排 (reserves)
-  const ri = (S.reserves || []).findIndex(r => {
-    const valid = r.filter(id => S.players.find(p => p.id === id && p.status === 'waiting'));
-    return valid.length >= 2;
-  });
-  if (ri !== -1) {
-    const ids = S.reserves.splice(ri, 1)[0]
-      .filter(id => S.players.find(p => p.id === id && p.status === 'waiting'));
-    court.players = ids; court.ts = Date.now();
-    ids.forEach(id => { const p = S.players.find(x => x.id === id); if (p) p.status = 'playing'; });
-    return 'reserve';
-  }
-
-  // 3. 演算法 — 排除已被其他場地預排的玩家，避免搶佔
-  const reservedByOthers = new Set(
-    S.courts.filter(c => c.id !== court.id && c.nextPlayers).flatMap(c => c.nextPlayers)
-  );
-  const q = waitingByPriority().filter(p => !reservedByOthers.has(p.id));
-  if (q.length < ppc) return false;
-  const sel = q.slice(0, ppc);
-  court.players = sel.map(p => p.id); court.ts = Date.now();
-  sel.forEach(p => p.status = 'playing');
-  return 'auto';
-}
-
-function startRound() {
-  const ppc = S.cfg.ppc;
-  let filled = 0;
-  S.courts.forEach(court => {
-    if (court.players.length > 0) return;
-    if (fillOneCourt(court)) filled++;
-  });
-  if (filled === 0) {
-    const q = waitingByPriority();
-    if (q.length < ppc)
-      notify(`⚠ 等待人數不足（需 ${ppc} 人）`, 'err');
-    else
-      notify('💬 所有場地均已有人在打', 'info');
-    return;
-  }
-  save(); renderAll();
-  notify(`✅ 已安排 ${filled} 個場地！`, 'ok');
-}
-
-function endCourt(cid) {
-  const court = S.courts.find(c => c.id === cid);
-  if (!court || court.players.length === 0) return;
-  const names = court.players.map(id => {
-    const p = S.players.find(x => x.id === id); return p ? p.name : '?';
-  }).join('、');
-
-  confirm_(`結束場地 ${cid}`,
-    `下場玩家：${names}\n\n確認後所有人次數 +1 並回到等待隊列，\n系統將自動安排下一批上場。`,
-    () => {
-      court.players.forEach(id => {
-        const p = S.players.find(x => x.id === id);
-        if (p) { p.games++; p.status = 'waiting'; }
-      });
-      court.players = []; court.ts = null;
-
-      const how = fillOneCourt(court);
-      if (how === 'next')         notify(`✅ 場地 ${cid} 套用場地預排上場！`, 'ok');
-      else if (how === 'reserve') notify(`✅ 場地 ${cid} 套用候補預排上場！`, 'ok');
-      else if (how === 'auto')    notify(`✅ 場地 ${cid} 自動安排下一輪！`, 'ok');
-      else                        notify(`✅ 場地 ${cid} 結束，等待排隊中`, 'ok');
-      save(); renderAll();
-    }
-  );
-}
-
-/* ─── 清除失效的預排（被排到別場地、或已離隊）─────────── */
-function pruneNextPlayers() {
-  S.courts.forEach(c => {
-    if (!c.nextPlayers) return;
-    const valid = c.nextPlayers.filter(id => S.players.find(p => p.id === id && p.status === 'waiting'));
-    c.nextPlayers = valid.length >= 2 ? valid : null;
-  });
-}
-
-/* ─── Render ─────────────────────────────────────────────── */
-function renderAll() {
-  pruneNextPlayers();
-  renderStats();
-  renderCourts();
-  renderQueue();
-  renderRank();
-  renderManageList();
-  renderReserves();
+/* ============================================================
+   管理員畫面
+   ============================================================ */
+function renderAdmin() {
+  $('room-label').textContent = roomId;
+  renderStats(); renderCourts(); renderQueue(); renderBookings(); renderRank(); renderPeople(); renderBar();
+  genQR();
+  if (assignOpen) renderAssignGrid();
 }
 
 function renderStats() {
-  const on = S.players.filter(p => p.status === 'playing').length;
-  const wt = S.players.filter(p => p.status === 'waiting').length;
-  document.getElementById('s-playing').textContent = on;
-  document.getElementById('s-waiting').textContent = wt;
-  document.getElementById('s-total').textContent   = S.players.length;
+  const ps = Object.values(S.players);
+  $('s-playing').textContent = ps.filter(p => p.status === 'playing' || p.status === 'called').length;
+  $('s-waiting').textContent = ps.filter(p => p.status === 'waiting').length;
+  $('s-total').textContent   = ps.filter(p => p.status !== 'left').length;
 }
 
 function renderCourts() {
-  const el = document.getElementById('courts'); if (!el) return;
-  if (!S.courts.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🏟</div><div class="empty-txt">請先在設定中配置場地</div></div>`;
-    return;
-  }
-  el.innerHTML = S.courts.map(court => {
-    const active  = court.players.length > 0;
-    const color   = COURT_COLORS[(court.id - 1) % COURT_COLORS.length];
-    const players = court.players.map(id => S.players.find(p => p.id === id)).filter(Boolean);
-
-    const body = active
-      ? `<div class="court-body-grid">${players.map(p =>
-          `<div class="player-chip">
-            <div class="avatar" style="background:linear-gradient(135deg,${color},${color}88)">${esc(p.name.charAt(0))}</div>
-            <div class="chip-name">${esc(p.name)}</div>
-          </div>`).join('')}</div>`
-      : `<div class="court-empty-msg">空閒中，等待下一輪安排…</div>`;
-
-    const footer = active
-      ? `<div class="court-ft">
-           <div class="court-timer" id="tmr-${court.id}">⏱ --:--</div>
-           <div style="font-size:.75rem;color:var(--text3)">${players.length} 人</div>
-         </div>`
-      : `<div class="court-ft" style="justify-content:center">
-           <button class="btn btn-sm btn-ghost" onclick="openAssign(${court.id})">👥 手動指定上場</button>
-         </div>`;
-
-    return `
-      <div class="court-card ${active ? 'active' : 'empty'} fade-in">
-        <div class="court-hd">
-          <div class="court-title">
-            <div class="court-dot" style="background:${color}"></div>
-            場地 ${court.id}
-            <span class="badge ${active ? 'badge-on' : 'badge-off'}">${active ? '進行中' : '空閒'}</span>
-          </div>
-          ${active ? `<div style="display:flex;gap:6px;align-items:center">
-            <button class="btn btn-sm btn-ghost" onclick="openPreAssign(${court.id})"
-              style="${court.nextPlayers?.length ? 'border-color:var(--warning);color:var(--warning)' : ''}">
-              ${court.nextPlayers?.length ? `📋 預排(${court.nextPlayers.length})` : '📋 預排下場'}
-            </button>
-            ${court.nextPlayers?.length ? `<button class="btn btn-sm" onclick="cancelPreAssign(${court.id})" title="取消預排"
-              style="padding:5px 8px;background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.3)">✕</button>` : ''}
-            <button class="btn btn-sm btn-danger" onclick="endCourt(${court.id})">結束</button>
-          </div>` : ''}
-        </div>
-        ${body}
-        ${footer}
-      </div>`;
+  $('courts').innerHTML = sortedCourts(S).map(c => {
+    const bk = bookingForCourt(c.id);
+    let foot;
+    if (c.status === 'playing') {
+      foot = `<div class="timer num" data-timer="${c.startedAt || 0}" data-prefix=""><small>進行</small>--:--</div>
+        <div class="ft-btns">
+          <button class="btn btn-quiet btn-sm" data-act="open-book" data-cid="${c.id}"
+            ${bk ? 'style="border-color:var(--call);color:var(--call)"' : ''}>${ico('bookmark')}${bk ? `預排 ${bk.ids.length} 人` : '預排下場'}</button>
+          <button class="btn btn-ink btn-sm" data-act="end" data-cid="${c.id}" data-gid="${esc(c.gid)}">${ico('check')}結束</button></div>`;
+    } else if (c.status === 'called') {
+      foot = `<div class="timer num" data-timer="${c.calledAt || 0}"><small>已叫</small>--:--</div>
+        <div class="ft-btns">
+          <button class="btn btn-quiet btn-sm" data-act="cancel-call" data-cid="${c.id}" data-gid="${esc(c.gid)}">取消叫號</button>
+          <button class="btn btn-primary btn-sm" data-act="start" data-cid="${c.id}" data-gid="${esc(c.gid)}">${ico('play')}開打</button></div>`;
+    } else {
+      foot = `<div></div><div class="ft-btns">
+          <button class="btn btn-quiet btn-sm" data-act="open-assign" data-cid="${c.id}">${ico('users')}手動指定</button>
+          <button class="btn btn-primary btn-sm" data-act="call" data-cid="${c.id}">${ico('bell')}叫號</button></div>`;
+    }
+    return `<div class="court ${c.status}">
+      <div class="court-hd"><div class="court-no"><span class="n num">${c.id}</span><span class="t">號場地</span></div>
+        <span class="st ${c.status}">${STATE_TXT[c.status]}</span></div>
+      ${courtFace(c, c.status === 'called')}
+      <div class="court-ft">${foot}</div></div>`;
   }).join('');
   tickTimers();
 }
 
 function tickTimers() {
-  S.courts.forEach(c => {
-    if (!c.ts) return;
-    const el = document.getElementById(`tmr-${c.id}`); if (!el) return;
-    const s = Math.floor((Date.now() - c.ts) / 1000);
-    el.textContent = `⏱ ${pad(Math.floor(s/60))}:${pad(s%60)}`;
+  document.querySelectorAll('[data-timer]').forEach(el => {
+    const t = Number(el.dataset.timer); if (!t) return;
+    const s = Math.max(0, Math.floor((now() - t) / 1000));
+    const label = el.querySelector('small');
+    el.textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+    if (label) el.prepend(label);
   });
 }
 
 function renderQueue() {
-  const el  = document.getElementById('queue-list'); if (!el) return;
-  const q   = waitingByPriority();
-  const ppc = S.cfg.ppc;
+  const q = waitingList(S);
+  const rsv = reservedSet(S);
+  const resting = Object.values(S.players).filter(p => p.status === 'resting').sort((a, b) => a.readyAt - b.readyAt);
+  const need = sortedCourts(S).filter(c => c.status === 'idle').length * S.cfg.ppc;
+  let html = '';
   if (!q.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🪑</div><div class="empty-txt">目前沒有等待中的玩家</div></div>`;
-    return;
+    html += `<div class="empty">目前沒有人在等待</div>`;
+  } else {
+    let free = 0;
+    html += `<div class="rows">` + q.map((p, i) => {
+      const r = rsv.has(p.id);
+      const next = !r && free < need; if (next) free++;
+      return `<div class="row ${next ? 'next' : ''}">
+        <div class="rk num">${i + 1}</div>
+        <div class="nm">${esc(p.name)}${r ? '<span class="tag tag-call">預約</span>' : ''}${next ? '<span class="tag tag-ok">下一批</span>' : ''}</div>
+        <div class="ra"><span class="gm num">${p.games}<small>局</small></span>
+          <button class="ibtn" title="暫離" data-act="rest" data-pid="${esc(p.id)}">${ico('pause')}</button>
+          <button class="ibtn del" title="離場" data-act="leave" data-pid="${esc(p.id)}">${ico('door')}</button></div></div>`;
+    }).join('') + `</div>`;
+    if (need > 0) html += `<div class="hint">綠色標示為空場地的下一批人選（${need} 人）；預約者不會被自動排入。</div>`;
   }
-  const emptyCourts = S.courts.filter(c => c.players.length === 0).length;
-  const nextUp = emptyCourts * ppc;
-  el.innerHTML = `
-    <div class="queue-list">
-      ${q.map((p, i) => `
-        <div class="queue-item ${i < nextUp ? 'next-up' : ''} fade-in" style="animation-delay:${i*.025}s">
-          <div class="rank-badge ${i < nextUp ? 'top' : ''}">${i+1}</div>
-          <div class="avatar" style="width:30px;height:30px;background:linear-gradient(135deg,var(--primary),var(--accent))">${esc(p.name.charAt(0))}</div>
-          <div class="q-name">${esc(p.name)}</div>
-          <div class="q-meta">
-            <span class="games-pill">打 ${p.games} 局</span>
-            <button class="rm-btn" onclick="removePlayer('${p.id}')" title="移除">✕</button>
-          </div>
-        </div>`).join('')}
-    </div>
-    ${nextUp > 0 && q.length >= nextUp
-      ? `<div class="hint-text">🟣 紫色為下一輪預排名單（共 ${nextUp} 人）</div>`
-      : nextUp > 0
-        ? `<div class="hint-text">⚠ 等待人數尚不足以填滿空場地（需 ${nextUp} 人）</div>`
-        : ''}`;
+  if (resting.length) {
+    html += `<div class="sec-h" style="margin-top:22px">暫離（不會被叫號）</div><div class="rows">` +
+      resting.map(p => `<div class="row">
+        <div class="rk num">–</div><div class="nm">${esc(p.name)}<span class="tag tag-mute">暫離</span></div>
+        <div class="ra"><span class="gm num">${p.games}<small>局</small></span>
+          <button class="mini" data-act="back" data-pid="${esc(p.id)}">回來了</button></div></div>`).join('') + `</div>`;
+  }
+  $('queue-list').innerHTML = html;
 }
 
+function renderBookings() {
+  const bs = Object.values(S.bookings).sort((a, b) => a.seq - b.seq);
+  $('bookings-section').style.display = bs.length ? 'block' : 'none';
+  $('bookings-list').innerHTML = bs.map(b => `
+    <div class="row" style="grid-template-columns:1fr auto">
+      <div class="nm" style="white-space:normal">${esc(b.ids.map(nameOf).join('、'))}</div>
+      <div class="ra"><span class="tag tag-call">${b.courtId ? `${b.courtId} 號場` : '任一空場'}</span>
+        <button class="ibtn del" title="取消預約" data-act="unbook" data-bid="${esc(b.id)}">${ico('x')}</button></div></div>`).join('');
+}
+
+const STATUS_TXT = { waiting: '等待', called: '叫號中', playing: '在場', resting: '暫離', left: '離場' };
 function renderRank() {
-  const el = document.getElementById('rank-list'); if (!el) return;
-  if (!S.players.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🏆</div><div class="empty-txt">尚無玩家資料</div></div>`;
-    return;
-  }
-  const sorted = [...S.players].sort((a, b) => b.games - a.games || a.joined - b.joined);
-  el.innerHTML = sorted.map((p, i) => `
-    <div class="lb-item ${p.status === 'playing' ? 'on-court' : ''} fade-in">
-      <div class="lb-rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1+'.'}</div>
-      <div class="avatar" style="width:30px;height:30px;background:linear-gradient(135deg,var(--primary),var(--accent))">${esc(p.name.charAt(0))}</div>
-      <div class="lb-name">${esc(p.name)}</div>
-      <span class="lb-status-badge ${p.status==='playing'?'ls-on':'ls-off'}">${p.status==='playing'?'在場':'等待'}</span>
-      <div class="lb-games">${p.games} 局</div>
-      <button class="rm-btn" onclick="removePlayer('${p.id}')" title="移除">✕</button>
-    </div>`).join('');
+  const ps = Object.values(S.players).filter(p => p.status !== 'left');
+  if (!ps.length) { $('rank-list').innerHTML = `<div class="empty">尚無玩家資料</div>`; return; }
+  const sorted = ps.sort((a, b) => b.games - a.games || a.readyAt - b.readyAt);
+  const max = Math.max(1, sorted[0].games);
+  $('rank-list').innerHTML = `<div class="rows">` + sorted.map((p, i) => `
+    <div class="row" style="padding-bottom:14px">
+      <div class="rk num">${i + 1}</div>
+      <div class="nm">${esc(p.name)}<span class="tag ${p.status === 'playing' || p.status === 'called' ? 'tag-ok' : 'tag-mute'}">${STATUS_TXT[p.status]}</span></div>
+      <div class="gm num">${p.games}<small>局</small></div>
+      <div class="bar-wrap"><div class="bar ${p.status === 'resting' ? 'rest' : ''}" style="width:${Math.round(p.games / max * 100)}%"></div></div>
+    </div>`).join('') + `</div>`;
 }
 
-function renderManageList() {
-  const el  = document.getElementById('manage-list'); if (!el) return;
-  const cnt = document.getElementById('manage-count');
-  if (!S.players.length) {
-    el.innerHTML = '<div style="font-size:.82rem;color:var(--text3);padding:6px 0">尚無玩家</div>';
-    if (cnt) cnt.textContent = '';
-    return;
-  }
-  const list = [...S.players].sort((a, b) => a.joined - b.joined);
-  if (cnt) cnt.textContent = `共 ${list.length} 人`;
-  el.innerHTML = list.map(p => {
-    const statusColor = p.status === 'playing' ? 'var(--success)' : 'var(--text3)';
-    const statusText  = p.status === 'playing' ? '在場' : '等待';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;
-                 background:var(--bg-input);border-radius:var(--radius-s);
-                 border:1px solid ${p.status==='playing'?'rgba(52,211,153,.2)':'var(--border)'}">
-      <div class="avatar" style="width:26px;height:26px;font-size:.7rem;flex-shrink:0;
-           background:linear-gradient(135deg,var(--primary),var(--accent))">${esc(p.name.charAt(0))}</div>
-      <div style="flex:1;font-weight:700;font-size:.85rem">${esc(p.name)}</div>
-      <span style="font-size:.7rem;color:${statusColor};font-weight:700">${statusText}</span>
-      <span style="font-size:.72rem;color:var(--text3);min-width:28px;text-align:right">${p.games}局</span>
-      <button class="rm-btn" onclick="removePlayer('${p.id}')" title="移除此玩家">✕</button>
-    </div>`;
+function renderPeople() {
+  const ps = Object.values(S.players).sort((a, b) => a.readyAt - b.readyAt);
+  $('manage-count').textContent = ps.length ? `共 ${ps.length} 人` : '';
+  if (!ps.length) { $('manage-list').innerHTML = '<div class="empty" style="border:0">尚無玩家</div>'; return; }
+  $('manage-list').innerHTML = ps.map(p => {
+    const pid = esc(p.id);
+    let btns;
+    if (p.status === 'left') btns = `<button class="mini" data-act="back-left" data-pid="${pid}" data-name="${esc(p.name)}">還原</button>
+                                      <button class="ibtn del" title="刪除" data-act="del" data-pid="${pid}">${ico('trash')}</button>`;
+    else if (p.status === 'resting') btns = `<button class="mini" data-act="back" data-pid="${pid}">回來</button>
+                                              <button class="ibtn del" title="離場" data-act="leave" data-pid="${pid}">${ico('door')}</button>`;
+    else btns = `<button class="ibtn del" title="離場" data-act="leave" data-pid="${pid}">${ico('door')}</button>`;
+    return `<div class="row" style="grid-template-columns:1fr auto">
+      <div class="nm">${esc(p.name)}<span class="tag tag-mute">${STATUS_TXT[p.status]}</span></div>
+      <div class="ra"><span class="gm num">${p.games}<small>局</small></span>${btns}</div></div>`;
   }).join('');
 }
 
-/* ─── Join View (player on phone) ────────────────────────── */
-function doJoin() {
-  const el   = document.getElementById('join-inp');
-  const name = el.value.trim();
-  if (!name) {
-    el.style.borderColor = 'var(--danger)';
-    setTimeout(() => el.style.borderColor = '', 2000);
-    return;
-  }
-  if (!_fbRef) { notify('⚠ 尚未連線，請稍後再試', 'err'); return; }
-
-  el.disabled = true;
-  document.querySelector('#join-view .btn').disabled = true;
-
-  // Firebase transaction：安全地加入玩家
-  _fbRef.transaction(state => {
-    if (!state) return state; // room not found → abort
-    const players = Array.isArray(state.players) ? state.players : Object.values(state.players || {});
-    if (players.find(p => p.name === name)) return; // 已存在 → abort，callback 內再判斷原因
-    players.push({ id: uid(), name, joined: Date.now(), games: 0, status: 'waiting' });
-    state.players = players;
-    return state;
-  }, (error, committed, snapshot) => {
-    if (error) {
-      el.disabled = false;
-      document.querySelector('#join-view .btn').disabled = false;
-      notify('⚠ 加入失敗，請重試', 'err');
-      return;
-    }
-    if (!committed) {
-      // transaction 被 abort → 判斷原因
-      const data    = snapshot ? snapshot.val() : null;
-      const players = data
-        ? (Array.isArray(data.players) ? data.players : Object.values(data.players || {}))
-        : [];
-      const existing = players.find(p => p.name === name);
-
-      if (!data) {
-        // 房間不存在
-        el.disabled = false;
-        document.querySelector('#join-view .btn').disabled = false;
-        notify('⚠ 找不到此房間，請確認房間代碼', 'err');
-      } else if (existing && existing.status === 'playing') {
-        // 已在場上打球
-        showJoinOk(`🏸 你目前已在場上！`);
-      } else if (existing && existing.status === 'waiting') {
-        // 關掉再開、重複掃碼 → 視為重新確認，顯示成功
-        showJoinOk(`✅ 你已在等待隊列中！`);
-      } else {
-        // 真的有別人用同名
-        el.disabled = false;
-        document.querySelector('#join-view .btn').disabled = false;
-        el.style.borderColor = 'var(--danger)';
-        setTimeout(() => el.style.borderColor = '', 2000);
-        notify('⚠ 此名字已有人使用，請換一個', 'err');
-      }
-      return;
-    }
-    // 成功加入
-    showJoinOk(`✅ 已成功加入等待隊列！`);
-  });
+function renderBar() {
+  const u = $('undo-btn');
+  u.style.display = S.prev ? 'inline-flex' : 'none';
+  u.title = S.prevLabel ? `撤銷：${S.prevLabel}` : '';
 }
 
-function showJoinOk(msg) {
-  const box = document.getElementById('join-ok');
-  const inp = document.getElementById('join-inp');
-  if (inp) inp.disabled = true;
-  if (box) {
-    box.style.display = 'block';
-    box.querySelector('span:first-child') || (box.firstChild.textContent = msg);
-    box.innerHTML = `${msg}<br>
-      <span style="font-weight:400;font-size:.82rem">請稍候，管理員安排上場後會輪到你</span><br>
-      <span style="font-size:.72rem;opacity:.7">房間：${roomId}</span>`;
-  }
-}
-
-/* ─── QR Code ────────────────────────────────────────────── */
+/* ─── QR（網址沒變就不重畫，避免閃爍）─── */
+let lastQr = '';
+function inviteUrl() { return `${location.origin}${location.pathname}?room=${roomId}&join=1`; }
 function genQR() {
-  if (!roomId) return;
-  const url = `${location.origin}${location.pathname}?room=${roomId}&join=1`;
-  document.getElementById('qr-url').textContent = url;
-  const div = document.getElementById('qrcode');
-  div.innerHTML = '';
-  try {
-    new QRCode(div, { text: url, width: 168, height: 168,
-      colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
-  } catch(e) { div.textContent = '無法產生 QR Code'; }
+  const url = inviteUrl();
+  if (url === lastQr) return;
+  lastQr = url;
+  $('qr-url').textContent = url;
+  const div = $('qrcode'); div.innerHTML = '';
+  try { new QRCode(div, { text: url, width: 168, height: 168, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M }); }
+  catch (e) { div.textContent = '無法產生 QR Code'; }
 }
-
 function copyInviteLink() {
-  if (!roomId) return;
-  const url = `${location.origin}${location.pathname}?room=${roomId}&join=1`;
-  navigator.clipboard.writeText(url)
-    .then(() => notify('✅ 邀請連結已複製！', 'ok'))
-    .catch(() => {
-      // fallback for http / older browsers
-      const el = document.createElement('textarea');
-      el.value = url; el.style.position = 'fixed'; el.style.opacity = '0';
-      document.body.appendChild(el); el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
-      notify('✅ 邀請連結已複製！', 'ok');
-    });
+  const url = inviteUrl();
+  const ok = () => notify('邀請連結已複製', 'ok');
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(ok).catch(() => fallbackCopy(url, ok));
+  else fallbackCopy(url, ok);
+}
+function fallbackCopy(text, done) {
+  const el = document.createElement('textarea');
+  el.value = text; el.style.cssText = 'position:fixed;opacity:0';
+  document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); done();
 }
 
-/* ─── Settings ───────────────────────────────────────────── */
+/* ============================================================
+   玩家端：登記 + 即時看板
+   ============================================================ */
+function renderJoin() {
+  $('join-room-label').textContent = `房間 ${roomId}`;
+  const me = myPid && S.players[myPid];
+  const joined = me && me.status !== 'left';
+  $('join-view').style.justifyContent = joined ? 'flex-start' : 'center';   // 看板靠上，表單置中
+  $('join-form').style.display = joined ? 'none' : 'block';
+  $('player-board').style.display = joined ? 'block' : 'none';
+  if (!joined) { lastMyStatus = null; return; }
+  renderBoard(me);
+}
+
+function renderBoard(me) {
+  const q = waitingList(S);
+  const pos = q.findIndex(p => p.id === me.id) + 1;
+  const myCourt = sortedCourts(S).find(c => c.teams.flat().includes(me.id));
+  const rsv = reservedSet(S).has(me.id);
+  let card;
+  if (me.status === 'called' && myCourt) {
+    const mates = myCourt.teams.flat().filter(id => id !== me.id).map(nameOf).join('、');
+    card = `<div class="status call"><div class="k">輪到你了</div><div class="big t">${myCourt.id} 號場</div>
+      <div class="sub">請現在前往場地。同場：${esc(mates) || '—'}</div></div>`;
+  } else if (me.status === 'playing' && myCourt) {
+    card = `<div class="status play"><div class="k">比賽進行中</div><div class="big t">${myCourt.id} 號場</div>
+      <div class="sub timer num" data-timer="${myCourt.startedAt || 0}" style="font-size:1.6rem"><small>已進行</small>--:--</div></div>`;
+  } else if (me.status === 'resting') {
+    card = `<div class="status rest"><div class="k">暫離中</div><div class="big t">休息一下</div>
+      <div class="sub">暫離期間不會被叫號。回來後按下按鈕，會排到同局數的最後。</div>
+      <div class="acts"><button class="btn btn-primary" data-act="my-back">我回來了</button></div></div>`;
+  } else {
+    card = `<div class="status"><div class="k">你的順位</div><div class="big num">${pos}</div>
+      <div class="sub">前面還有 ${Math.max(0, pos - 1)} 人，你已打 ${me.games} 局${rsv ? '。你在預約名單中，會優先上場' : ''}</div>
+      <div class="acts"><button class="btn btn-quiet btn-sm" data-act="my-rest">${ico('pause')}我要暫離</button></div></div>`;
+  }
+  const courts = sortedCourts(S).map(c => `<div class="mini-court">
+      <div class="cap"><span>${c.id} 號場</span><span>${STATE_TXT[c.status]}</span></div>${courtFace(c, false)}</div>`).join('');
+  const queue = q.map((p, i) => `<div class="row ${p.id === me.id ? 'me' : ''}"><div class="rk num">${i + 1}</div>
+      <div class="nm">${esc(p.name)}</div><div class="gm num">${p.games}<small>局</small></div></div>`).join('');
+  $('player-board').innerHTML = `${card}
+    <div class="sec-h">場地</div>${courts}
+    <div class="sec-h" style="margin-top:20px">排隊中 ${q.length} 人</div>
+    <div class="rows">${queue || '<div class="empty" style="border:0">目前沒有人在等待</div>'}</div>
+    <div style="margin-top:22px;text-align:center"><button class="btn btn-quiet btn-sm" data-act="my-leave">${ico('door')}我要離開</button></div>`;
+  tickTimers();
+  // 剛被叫號：震動提醒
+  if (lastMyStatus !== 'called' && me.status === 'called' && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  lastMyStatus = me.status;
+}
+
+function doJoin() {
+  const el = $('join-inp'), name = cleanName(el.value);
+  if (!name) { el.style.borderColor = 'var(--red)'; setTimeout(() => el.style.borderColor = '', 2000); return; }
+  const pid = myPid || newPid();
+  $('join-btn').disabled = true;
+  dispatch({ type: 'JOIN', pid, name }, res => {
+    myPid = (res.extra && res.extra.pid) || pid;
+    localStorage.setItem('bq_pid_' + roomId, myPid);
+    render();      // 快照事件比完成回呼早到，此時才有 myPid，需主動重繪
+  });
+  setTimeout(() => { $('join-btn').disabled = false; }, 1500);
+}
+
+function manualAdd() {
+  const el = $('manual-inp'), name = cleanName(el.value);
+  if (!name) return;
+  dispatch({ type: 'JOIN', pid: newPid(), name }, () => { el.value = ''; });
+}
+
+/* ============================================================
+   指定上場 / 預約 彈窗
+   ============================================================ */
+let assignOpen = false, _a = { mode: 'assign', cid: 0, sel: new Set() };
+
+function openAssign(cid) {
+  _a = { mode: 'assign', cid, sel: new Set() };
+  $('assign-title').textContent = `手動指定 ${cid} 號場`;
+  $('assign-hint').textContent = `從等待隊列中選 2–${S.cfg.ppc} 人，直接開打（不受次數限制，適合約戰）。`;
+  $('assign-ok').textContent = '確認上場';
+  openAssignModal();
+}
+function openBook(cid) {
+  const ex = cid ? bookingForCourt(cid) : null;
+  _a = { mode: 'book', cid, sel: new Set(ex ? ex.ids : []) };
+  $('assign-title').textContent = cid ? `預排 ${cid} 號場（下一場）` : '預約（不指定場地）';
+  $('assign-hint').textContent = (cid ? `選好的人在 ${cid} 號場結束後優先上場。` : '選好的人在任一空場出現時優先上場。')
+    + `\n人數不足 ${S.cfg.ppc} 人時，系統會自動從等待隊列補滿。`;
+  $('assign-ok').textContent = '儲存預約';
+  openAssignModal();
+}
+function openAssignModal() { assignOpen = true; renderAssignGrid(); $('assign-modal').classList.add('open'); }
+function closeAssign() { assignOpen = false; $('assign-modal').classList.remove('open'); }
+
+function renderAssignGrid() {
+  const ppc = S.cfg.ppc;
+  // 候選人：等待中，且沒被「其他」預約佔住
+  const taken = new Set();
+  Object.values(S.bookings).forEach(b => { if (!(_a.mode === 'book' && _a.cid && b.courtId === _a.cid)) b.ids.forEach(id => taken.add(id)); });
+  const list = waitingList(S, _a.mode === 'assign' ? reservedSet(S) : taken);
+  _a.sel.forEach(id => { if (!list.some(p => p.id === id)) _a.sel.delete(id); });      // 剔除已不合格的選擇
+  $('assign-grid').innerHTML = list.length ? list.map(p => {
+    const sel = _a.sel.has(p.id), maxed = _a.sel.size >= ppc && !sel;
+    return `<div class="pick ${sel ? 'sel' : ''} ${maxed ? 'maxed' : ''}" data-act="pick" data-pid="${esc(p.id)}">${esc(p.name)}<small>${p.games} 局</small></div>`;
+  }).join('') : '<div style="color:var(--ink3);font-size:.88rem;padding:8px 0">沒有可選的玩家</div>';
+  $('assign-count').textContent = `已選 ${_a.sel.size} 人 / 最多 ${ppc} 人（至少 2 人）`;
+  $('assign-ok').disabled = _a.sel.size < 2;
+}
+
+function confirmAssign() {
+  const ids = [..._a.sel];
+  if (ids.length < 2) return;
+  const type = _a.mode === 'book' ? 'BOOK' : 'ASSIGN';
+  dispatch({ type, courtId: _a.cid, ids }, () => closeAssign());
+}
+
+/* ============================================================
+   設定 / 確認 / 通知 / 主題
+   ============================================================ */
 function openSettings() {
-  document.getElementById('set-courts').value   = S.cfg.courts;
-  document.getElementById('set-players').value  = S.cfg.ppc;
-  document.getElementById('set-shuffle').checked = !!S.cfg.shuffle;
-  const lbl = document.getElementById('settings-room-label');
-  if (lbl) lbl.textContent = roomId || '';
-  document.getElementById('settings-modal').classList.add('open');
+  $('set-courts').value = S.cfg.courts;
+  $('set-players').value = S.cfg.ppc;
+  $('set-autocall').checked = !!S.cfg.autoCall;
+  $('settings-room-label').textContent = roomId || '';
+  $('settings-modal').classList.add('open');
 }
-function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
-function saveSettings() {
-  const c = Math.min(10, Math.max(1, parseInt(document.getElementById('set-courts').value)  || 2));
-  const p = Math.min(6,  Math.max(2, parseInt(document.getElementById('set-players').value) || 4));
-  S.cfg.courts  = c;
-  S.cfg.ppc     = p;
-  S.cfg.shuffle = document.getElementById('set-shuffle').checked;
-  syncCourts();
-  save();
-  closeSettings();
-  renderAll();
-  notify('✅ 設定已儲存', 'ok');
-}
-function askReset() {
-  closeSettings();
-  confirm_('確認重置所有資料', '這將清除所有玩家名單和比賽記錄。\n此操作無法復原。', () => {
-    S = defaultState();
-    syncCourts();
-    save();
-    renderAll();
-    notify('✅ 資料已重置', 'ok');
-  });
-}
+const closeSettings = () => $('settings-modal').classList.remove('open');
 
-function askCloseRoom() {
-  closeSettings();
-  confirm_(
-    `🗑 結束並刪除房間`,
-    `房間「${roomId}」的所有資料將從 Firebase 永久刪除。\n\n確認後將回到房間選擇畫面。\n此操作無法復原。`,
-    () => {
-      if (_fbRef) {
-        _fbRef.off();          // 先關掉 onValue 監聽，避免刪除觸發異常渲染
-        _fbRef.remove(() => {
-          location.href = location.pathname; // 回首頁（房間選擇）
-        });
-      } else {
-        location.href = location.pathname;
-      }
-    }
-  );
-}
-
-/* ─── Tabs ───────────────────────────────────────────────── */
-function switchTab(name, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  ['queue','rank','add'].forEach(id => {
-    document.getElementById(`tab-${id}`).style.display = id === name ? 'block' : 'none';
-  });
-}
-
-/* ─── Confirm modal ──────────────────────────────────────── */
 let _cb = null;
 function confirm_(title, text, cb) {
-  document.getElementById('c-title').textContent = title;
-  document.getElementById('c-text').textContent  = text;
-  _cb = cb;
-  document.getElementById('confirm-modal').classList.add('open');
+  $('c-title').textContent = title; $('c-text').textContent = text; _cb = cb;
+  $('confirm-modal').classList.add('open');
 }
-function closeConfirm() { document.getElementById('confirm-modal').classList.remove('open'); _cb = null; }
-document.getElementById('c-ok').addEventListener('click', () => { const cb = _cb; closeConfirm(); if (cb) cb(); });
+const closeConfirm = () => { $('confirm-modal').classList.remove('open'); _cb = null; };
 
-/* ─── Notification ───────────────────────────────────────── */
-function notify(msg, type = 'ok') {
-  document.querySelectorAll('.notif').forEach(n => n.remove());
+function notify(msg, type) {
+  document.querySelectorAll('.toast').forEach(n => n.remove());
   const d = document.createElement('div');
-  d.className = `notif ${type}`;
+  d.className = 'toast ' + (type || 'ok');
   d.textContent = msg;
   document.body.appendChild(d);
   setTimeout(() => d.remove(), 3000);
 }
 
-/* ─── Cancel pre-assign ─────────────────────────────────── */
-function cancelPreAssign(cid) {
-  const court = S.courts.find(c => c.id === cid);
-  if (!court) return;
-  court.nextPlayers = null;
-  save(); renderAll();
-  notify(`📋 場地 ${cid} 預排已取消`, 'info');
-}
-
-/* ─── Reserves (浮動候補預排) ───────────────────────────── */
-function renderReserves() {
-  const sec  = document.getElementById('reserves-section');
-  const list = document.getElementById('reserves-list');
-  if (!sec || !list) return;
-  const rs = S.reserves || [];
-  sec.style.display = rs.length ? 'block' : 'none';
-  list.innerHTML = rs.map((ids, i) => {
-    const names = ids.map(id => S.players.find(p => p.id === id)?.name || '?').join('、');
-    const valid = ids.filter(id => S.players.find(p => p.id === id && p.status === 'waiting')).length;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;
-                 background:var(--bg-card2);border-radius:var(--radius-s);
-                 border:1px solid rgba(251,191,36,.3)">
-      <span style="font-size:1rem">📋</span>
-      <div style="flex:1;font-size:.85rem;font-weight:700">${esc(names)}</div>
-      <span style="font-size:.7rem;color:${valid>=2?'var(--success)':'var(--danger)'}">
-        ${valid} 人可上場</span>
-      <button class="rm-btn" onclick="removeReserve(${i})" title="取消候補">✕</button>
-    </div>`;
-  }).join('');
-}
-
-function removeReserve(i) {
-  S.reserves.splice(i, 1);
-  save(); renderAll();
-  notify('📋 候補預排已取消', 'info');
-}
-
-/* ─── Manual assign (約戰/指定上場) ─────────────────────── */
-let _aCourt = null;
-let _aSel   = new Set();
-let _aMode  = 'now'; // 'now' | 'next' | 'reserve'
-
-function openReserve() {
-  _aCourt = null; _aSel = new Set(); _aMode = 'reserve';
-  document.getElementById('assign-title').textContent = `📋 候補預排（不指定場地）`;
-  document.getElementById('assign-hint').textContent  =
-    `選好的人將加入浮動候補列表，任意場地空出來時自動優先上場。\n與「預排下場」不同，此候補不綁定特定場地。`;
-  document.getElementById('assign-ok').textContent = '加入候補';
-  renderAssignGrid();
-  document.getElementById('assign-modal').classList.add('open');
-}
-
-function openAssign(courtId) {
-  _aCourt = courtId; _aSel = new Set(); _aMode = 'now';
-  const ppc = S.cfg.ppc;
-  document.getElementById('assign-title').textContent = `👥 手動指定場地 ${courtId}`;
-  document.getElementById('assign-hint').textContent  = `從等待隊列中選 2–${ppc} 人（不受次數限制，適合約戰）`;
-  document.getElementById('assign-ok').textContent = '確認上場';
-  renderAssignGrid();
-  document.getElementById('assign-modal').classList.add('open');
-}
-
-function openPreAssign(courtId) {
-  _aCourt = courtId; _aMode = 'next';
-  const court = S.courts.find(c => c.id === courtId);
-  _aSel = new Set(court?.nextPlayers || []);
-  document.getElementById('assign-title').textContent = `📋 預排場地 ${courtId}（指定下一場）`;
-  document.getElementById('assign-hint').textContent  =
-    `選好的人將在本場地結束後直接優先上場。人數不足時系統自動從等待隊列補滿。`;
-  document.getElementById('assign-ok').textContent = '儲存預排';
-  renderAssignGrid();
-  document.getElementById('assign-modal').classList.add('open');
-}
-
-function renderAssignGrid() {
-  const ppc     = S.cfg.ppc;
-  const waiting = S.players
-    .filter(p => p.status === 'waiting')
-    .sort((a, b) => a.games !== b.games ? a.games - b.games : a.joined - b.joined);
-
-  const grid = document.getElementById('assign-grid');
-  grid.innerHTML = waiting.length
-    ? waiting.map(p => {
-        const sel   = _aSel.has(p.id);
-        const maxed = _aSel.size >= ppc && !sel;
-        return `<div class="p-toggle ${sel?'sel':''} ${maxed?'maxed':''}"
-                     onclick="togglePick('${p.id}',${maxed})">
-          <div class="avatar" style="width:26px;height:26px;font-size:.72rem;
-               background:linear-gradient(135deg,var(--primary),var(--accent))">${esc(p.name.charAt(0))}</div>
-          <span class="p-toggle-name">${esc(p.name)}</span>
-          <span class="p-toggle-meta">${p.games}局</span>
-        </div>`;
-      }).join('')
-    : '<div style="color:var(--text3);font-size:.85rem;padding:8px">沒有等待中的玩家</div>';
-
-  document.getElementById('assign-count').textContent =
-    `已選 ${_aSel.size} 人 / 最多 ${ppc} 人（至少選 2 人才能確認）`;
-  document.getElementById('assign-ok').disabled = _aSel.size < 2;
-}
-
-function togglePick(id, maxed) {
-  if (maxed) return;
-  _aSel.has(id) ? _aSel.delete(id) : _aSel.add(id);
-  renderAssignGrid();
-}
-
-function confirmAssign() {
-  if (_aSel.size < 2) return;
-  const ids = [..._aSel];
-
-  // 候補預排：不需要指定場地
-  if (_aMode === 'reserve') {
-    if (!S.reserves) S.reserves = [];
-    S.reserves.push(ids);
-    save(); renderAll(); closeAssign();
-    const names = ids.map(id => S.players.find(p => p.id === id)?.name || '?').join('、');
-    notify(`📋 候補預排已加入：${names}`, 'ok');
-    return;
-  }
-
-  const court = S.courts.find(c => c.id === _aCourt);
-  if (!court) return;
-
-  if (_aMode === 'next') {
-    court.nextPlayers = ids;
-    save(); renderAll(); closeAssign();
-    const names = ids.map(id => S.players.find(p => p.id === id)?.name || '?').join('、');
-    notify(`📋 場地 ${_aCourt} 預排完成：${names}`, 'ok');
-  } else {
-    court.players = ids;
-    court.ts      = Date.now();
-    ids.forEach(id => {
-      const p = S.players.find(x => x.id === id);
-      if (p) p.status = 'playing';
-    });
-    save(); renderAll(); closeAssign();
-    notify(`✅ 場地 ${_aCourt} 已手動安排 ${ids.length} 人上場！`, 'ok');
-  }
-}
-
-function closeAssign() {
-  document.getElementById('assign-modal').classList.remove('open');
-  _aCourt = null; _aSel = new Set();
-}
-
-/* ─── Sim / Test helpers ─────────────────────────────────── */
-const SIM_NAMES = [
-  '小明','小華','小美','阿強','阿志','阿偉','雅婷','淑芬',
-  '建國','志明','淑惠','大雄','靜香','胖虎','小夫','技安',
-  '阿凱','佳蓉','宗翰','怡君','子豪','欣怡','俊傑','玉珍'
-];
-function simLoad(n) {
-  let added = 0;
-  for (const name of SIM_NAMES) {
-    if (added >= n) break;
-    if (addPlayer(name, true)) added++;
-  }
-  save(); renderAll();
-  notify(`✅ 已加入 ${added} 位測試玩家`, 'ok');
-}
-function simRandomGames() {
-  if (!S.players.length) { notify('⚠ 請先加入玩家', 'err'); return; }
-  S.players.filter(p => p.status === 'waiting').forEach(p => {
-    p.games = Math.floor(Math.random() * 5);
-  });
-  save(); renderAll();
-  notify('🎲 已隨機分配次數', 'ok');
-}
-function simClear() {
-  confirm_('清除所有玩家', '確定要移除所有玩家資料嗎？', () => {
-    S.courts.forEach(c => { c.players = []; c.ts = null; });
-    S.players = [];
-    save(); renderAll();
-    notify('✅ 已清除', 'ok');
-  });
-}
-
-/* ─── Theme ──────────────────────────────────────────────── */
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
-  const btn = document.getElementById('theme-btn');
-  if (btn) btn.textContent = t === 'light' ? '🌙' : '☀️';
+  const btn = $('theme-btn'); if (btn) btn.innerHTML = ico(t === 'light' ? 'moon' : 'sun');
 }
-function toggleTheme() {
-  const cur  = document.documentElement.getAttribute('data-theme') || 'dark';
-  const next = cur === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
-  localStorage.setItem('bq_theme', next);
+function enterRoom() {
+  const inp = $('room-inp'), raw = inp.value.trim();
+  if (!raw) { inp.style.borderColor = 'var(--red)'; setTimeout(() => inp.style.borderColor = '', 2000); return; }
+  const rid = sanitizeRoomId(raw);
+  if (!rid) { notify('只能包含英文字母、數字、連字符', 'err'); return; }
+  location.href = `${location.pathname}?room=${rid}`;
 }
-(function() { applyTheme(localStorage.getItem('bq_theme') || 'dark'); })();
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.id === name));
+  ['queue', 'rank', 'people'].forEach(id => { $('tab-' + id).style.display = id === name ? 'block' : 'none'; });
+}
+
+/* ============================================================
+   事件委派：所有按鈕都用 data-act，不再拼 inline onclick（避免 XSS）
+   ============================================================ */
+const UI = {
+  'enter-room': enterRoom,
+  'create-room': () => dispatch({ type: 'INIT' }),
+  'go-home': () => { location.href = location.pathname; },
+  'do-join': doJoin,
+  'manual-add': manualAdd,
+  'copy-link': copyInviteLink,
+  'toggle-theme': () => {
+    const next = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'light' : 'dark';
+    applyTheme(next); localStorage.setItem('bq_theme2', next);
+  },
+  'tab': d => switchTab(d.id),
+  'start-round': () => dispatch({ type: 'START_ROUND' }),
+  'undo': () => dispatch({ type: 'UNDO' }),
+  'call': d => dispatch({ type: 'CALL', courtId: Number(d.cid) }),
+  'start': d => dispatch({ type: 'START', courtId: Number(d.cid), gid: Number(d.gid) }),
+  'cancel-call': d => dispatch({ type: 'CANCEL_CALL', courtId: Number(d.cid), gid: Number(d.gid) }),
+  'noshow': d => dispatch({ type: 'NOSHOW', courtId: Number(d.cid), gid: Number(d.gid), pid: d.pid }),
+  'end': d => {
+    const c = S && S.courts['c' + d.cid]; if (!c) return;
+    const names = c.teams.flat().map(nameOf).join('、');
+    confirm_(`結束 ${d.cid} 號場`, `下場玩家：${names}\n\n確認後所有人次數 +1 並回到等待隊列。\n按錯可用左下角「撤銷」復原。`,
+      () => dispatch({ type: 'END', courtId: Number(d.cid), gid: Number(d.gid) }));
+  },
+  'open-assign': d => openAssign(Number(d.cid)),
+  'open-book': d => openBook(Number(d.cid) || 0),
+  'unbook': d => dispatch({ type: 'UNBOOK', bid: d.bid }),
+  'pick': d => {
+    if (_a.sel.has(d.pid)) _a.sel.delete(d.pid);
+    else if (_a.sel.size < S.cfg.ppc) _a.sel.add(d.pid);
+    renderAssignGrid();
+  },
+  'confirm-assign': confirmAssign,
+  'close-assign': closeAssign,
+  'rest': d => dispatch({ type: 'REST', pid: d.pid, on: true }),
+  'back': d => dispatch({ type: 'REST', pid: d.pid, on: false }),
+  'back-left': d => dispatch({ type: 'JOIN', pid: d.pid, name: d.name }),
+  'del': d => confirm_('刪除玩家', `確定永久刪除「${nameOf(d.pid)}」與其局數紀錄？`, () => dispatch({ type: 'DELETE', pid: d.pid })),
+  'leave': d => {
+    const p = S.players[d.pid]; if (!p) return;
+    const onCourt = p.status === 'called' || p.status === 'playing';
+    if (onCourt) confirm_('讓在場玩家離場', `${p.name} 目前在場上，確定要讓他離場嗎？\n（本場不計入他的局數）`, () => dispatch({ type: 'LEAVE', pid: d.pid }));
+    else dispatch({ type: 'LEAVE', pid: d.pid });
+  },
+  'my-rest': () => dispatch({ type: 'REST', pid: myPid, on: true }),
+  'my-back': () => dispatch({ type: 'REST', pid: myPid, on: false }),
+  'my-leave': () => confirm_('離開隊列', '確定要離開嗎？你的局數會保留，之後可用同一個名字回來。', () => dispatch({ type: 'LEAVE', pid: myPid })),
+  'open-settings': openSettings,
+  'close-settings': closeSettings,
+  'save-settings': () => dispatch({
+    type: 'SET_CFG', courts: $('set-courts').value, ppc: Number($('set-players').value), autoCall: $('set-autocall').checked
+  }, closeSettings),
+  'ask-reset': () => { closeSettings(); confirm_('確認重置所有資料', '這將清除所有玩家名單與比賽記錄。\n此操作無法復原。', () => dispatch({ type: 'RESET' })); },
+  'ask-close-room': () => {
+    closeSettings();
+    confirm_('結束並刪除房間', `房間「${roomId}」的所有資料將永久刪除。\n其他裝置會顯示「房間已結束」。\n此操作無法復原。`, () => {
+      ref.off();
+      ref.remove(() => { location.href = location.pathname; });
+    });
+  },
+  'close-confirm': closeConfirm,
+  'confirm-ok': () => { const cb = _cb; closeConfirm(); if (cb) cb(); },
+  'dev-fill': d => dispatch({ type: 'DEV_FILL', n: Number(d.id) })
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (el && !el.disabled && UI[el.dataset.act]) { UI[el.dataset.act](el.dataset); return; }
+  // 點擊彈窗背景關閉（設定、指定上場）
+  if (e.target.id === 'settings-modal') closeSettings();
+  if (e.target.id === 'assign-modal') closeAssign();
+});
 </script>
 </body>
 </html>
